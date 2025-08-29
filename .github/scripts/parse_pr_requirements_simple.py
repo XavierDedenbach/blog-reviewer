@@ -108,6 +108,7 @@ def main():
             "other": len(other)
         },
         "test_required": len(tests) > 0,
+        "documentation_required": "docs" in args.comment_body.lower() or "documentation" in args.pr_body.lower() if args.pr_body else False,
         "priority": "high" if "urgent" in args.comment_body.lower() else "normal"
     }
     
