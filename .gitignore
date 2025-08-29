@@ -207,4 +207,4 @@ marimo/_lsp/
 __marimo__/
 
 #github
-.github/
+# .github/ - Removed to allow GitHub Actions workflows
