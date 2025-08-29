@@ -75,11 +75,24 @@ jobs:
     - name: Run Tests
       id: run-tests
       run: |
+        # Install pytest and common testing dependencies
+        pip install pytest pytest-asyncio pytest-cov
+        
+        # Install additional test dependencies if available
         if [ -f "requirements-test.txt" ]; then
           pip install -r requirements-test.txt
         fi
+        
+        # Install project dependencies for testing
+        if [ -f "requirements.txt" ]; then
+          pip install -r requirements.txt
+        fi
+        
+        # Run tests if pytest config or tests directory exists
         if [ -f "pytest.ini" ] || [ -d "tests/" ]; then
           python -m pytest -v --tb=short || echo "tests-failed=true" >> $GITHUB_OUTPUT
+        else
+          echo "No tests found to run"
         fi
     
     - name: Commit Generated Code

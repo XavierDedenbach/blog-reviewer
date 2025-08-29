@@ -197,7 +197,7 @@ Generate production-ready code that follows Python best practices, includes prop
         }
         
         data = {
-            'model': 'claude-3-5-sonnet-20241022',
+            'model': 'claude-sonnet-4-20250514',
             'max_tokens': 4000,
             'messages': [
                 {
@@ -208,7 +208,16 @@ Generate production-ready code that follows Python best practices, includes prop
         }
         
         try:
+            print(f"Calling Claude API with model: {data['model']}")
+            print(f"Headers: {headers}")
             response = requests.post(self.anthropic_url, headers=headers, json=data)
+            
+            print(f"Response status: {response.status_code}")
+            print(f"Response headers: {dict(response.headers)}")
+            
+            if response.status_code != 200:
+                print(f"Error response body: {response.text}")
+            
             response.raise_for_status()
             
             result = response.json()
@@ -216,6 +225,8 @@ Generate production-ready code that follows Python best practices, includes prop
             
         except requests.exceptions.RequestException as e:
             print(f"Error calling Claude API: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Response content: {e.response.text}")
             return f"Error generating code: {e}"
     
     def parse_and_write_files(self, claude_response: str) -> List[str]:

@@ -6,8 +6,8 @@
   "pr_title": "PR-001: Project Setup and Infrastructure",
   "description": "Set up the core infrastructure for the Blog Reviewer system including Docker, MongoDB, testing framework, and CI/CD pipeline.\n\n**Size**: ~300 lines | **Duration**: 1-2 days",
   "claude_command": {
-    "command": "fix",
-    "details": "implement all project setup requirements with Docker best practices and TDD approach. All parser compatibility issues have been fixed - both 'source' and 'documentation_required' fields are now included."
+    "command": "implement",
+    "details": "implement with enhanced debugging enabled - this will show detailed API request/response information to help diagnose the 404 error"
   },
   "requirements": [
     {
