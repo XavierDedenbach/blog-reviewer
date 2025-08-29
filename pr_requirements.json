@@ -3,7 +3,7 @@
   "description": "Implement MongoDB document models and basic CRUD operations for the Blog Reviewer system. This PR establishes the core data layer with proper validation, indexing, and database connection management.\n\n**Size**: ~350 lines | **Duration**: 2-3 days  \n**Agent**: mongodb-manager with strict TDD approach",
   "claude_command": {
     "command": "implement",
-    "details": "retry implementation - API updated to Sonnet 4.0"
+    "details": "model name corrected to claude-sonnet-4-20250514 - please retry"
   },
   "requirements": [
     {
