@@ -197,7 +197,7 @@ Generate production-ready code that follows Python best practices, includes prop
         }
         
         data = {
-            'model': 'claude-4-0-sonnet-20250514',
+            'model': 'claude-sonnet-4-20250514',
             'max_tokens': 8000,
             'messages': [
                 {
