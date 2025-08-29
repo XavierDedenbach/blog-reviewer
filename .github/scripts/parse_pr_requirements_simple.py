@@ -37,7 +37,8 @@ def extract_requirements(text: str) -> List[Dict[str, Any]]:
         requirements.append({
             "type": req_type,
             "requirement": requirement_text,
-            "priority": priority
+            "priority": priority,
+            "source": "body"
         })
     
     return requirements
