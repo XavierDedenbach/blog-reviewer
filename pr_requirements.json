@@ -3,7 +3,7 @@
   "description": "",
   "claude_command": {
     "command": "test",
-    "details": "test"
+    "details": "test with docs"
   },
   "requirements": [
     {
@@ -11,20 +11,15 @@
       "requirement": "Task 1",
       "priority": "normal",
       "source": "body"
-    },
-    {
-      "type": "test",
-      "requirement": "Test something",
-      "priority": "high",
-      "source": "body"
     }
   ],
   "summary": {
-    "total": 2,
+    "total": 1,
     "tasks": 0,
-    "tests": 1,
+    "tests": 0,
     "other": 1
   },
-  "test_required": true,
+  "test_required": false,
+  "documentation_required": true,
   "priority": "normal"
 }
