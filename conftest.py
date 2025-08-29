@@ -79,6 +79,7 @@ def sample_article_data():
         "article_type": "draft",
         "review_status": "pending",
         "purpose": "educational",
+        "source": "manual",
         "tags": ["test", "article"],
         "metadata": {
             "source": "test",
@@ -98,7 +99,9 @@ def sample_author_data():
         "writing_style": {
             "tone": "professional",
             "complexity": "intermediate",
-            "typical_word_count": 1500
+            "typical_word_count": 1500,
+            "voice": "active",
+            "sentence_structure": "varied"
         },
         "social_links": {
             "twitter": "https://twitter.com/testauthor",
