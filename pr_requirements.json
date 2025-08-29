@@ -1,115 +1,103 @@
 {
-  "pr_title": "PR-001: Project Setup and Infrastructure",
-  "description": "Set up the core infrastructure for the Blog Reviewer system including Docker, MongoDB, testing framework, and CI/CD pipeline.\n\n**Size**: ~300 lines | **Duration**: 1-2 days",
+  "pr_title": "PR-002: Database Models and Core Operations",
+  "description": "Implement MongoDB document models and basic CRUD operations for the Blog Reviewer system. This PR establishes the core data layer with proper validation, indexing, and database connection management.\n\n**Size**: ~350 lines | **Duration**: 2-3 days  \n**Agent**: mongodb-manager with strict TDD approach",
   "claude_command": {
-    "command": "fix",
-    "details": "implement all project setup requirements with Docker best practices and TDD approach. All parser compatibility issues have been fixed - both 'source' and 'documentation_required' fields are now included."
+    "command": "implement",
+    "details": "model name corrected to claude-sonnet-4-20250514 - please retry"
   },
   "requirements": [
     {
-      "type": "task",
-      "requirement": "Create project directory structure",
-      "priority": "high",
+      "type": "requirement",
+      "requirement": "**Article Model**: Complete document model with validation",
+      "priority": "normal",
       "source": "body"
     },
     {
-      "type": "task",
-      "requirement": "Set up Docker and docker-compose for development",
-      "priority": "high",
+      "type": "requirement",
+      "requirement": "**Author Model**: Author profiles with style analysis",
+      "priority": "normal",
       "source": "body"
     },
     {
-      "type": "task",
-      "requirement": "Configure MongoDB service with initialization scripts",
+      "type": "requirement",
+      "requirement": "**Review Model**: Review workflow and scoring",
+      "priority": "normal",
+      "source": "body"
+    },
+    {
+      "type": "requirement",
+      "requirement": "Database connection management and configuration",
+      "priority": "normal",
+      "source": "body"
+    },
+    {
+      "type": "requirement",
+      "requirement": "Basic CRUD operations for each model",
+      "priority": "normal",
+      "source": "body"
+    },
+    {
+      "type": "requirement",
+      "requirement": "Performance indexes based on database_schema.md",
+      "priority": "normal",
+      "source": "body"
+    },
+    {
+      "type": "requirement",
+      "requirement": "Data validation schemas with proper error handling",
+      "priority": "normal",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Unit tests for all model operations",
       "priority": "high",
       "source": "body"
     },
     {
       "type": "test",
-      "requirement": "Set up pytest with async support and coverage",
-      "priority": "high",
-      "source": "body"
-    },
-    {
-      "type": "task",
-      "requirement": "Create GitHub Actions CI/CD pipeline",
-      "priority": "high",
-      "source": "body"
-    },
-    {
-      "type": "task",
-      "requirement": "Configure environment variable management",
+      "requirement": "Integration tests with real MongoDB instance",
       "priority": "high",
       "source": "body"
     },
     {
       "type": "test",
-      "requirement": "Add health check endpoints",
-      "priority": "high",
-      "source": "body"
-    },
-    {
-      "type": "task",
-      "requirement": "Create development documentation",
+      "requirement": "Data validation and constraint enforcement tests",
       "priority": "high",
       "source": "body"
     },
     {
       "type": "test",
-      "requirement": "Test Docker service configuration validation",
+      "requirement": "Index usage and query performance tests",
       "priority": "high",
       "source": "body"
     },
     {
-      "type": "test",
-      "requirement": "Test environment variable loading",
-      "priority": "high",
+      "type": "requirement",
+      "requirement": "Error handling for database failures",
+      "priority": "normal",
+      "source": "body"
+    },
+    {
+      "type": "requirement",
+      "requirement": "CRUD operations verification",
+      "priority": "normal",
       "source": "body"
     },
     {
       "type": "test",
-      "requirement": "Test MongoDB connection and operations",
-      "priority": "high",
-      "source": "body"
-    },
-    {
-      "type": "test",
-      "requirement": "Test CI pipeline execution",
-      "priority": "high",
-      "source": "body"
-    },
-    {
-      "type": "test",
-      "requirement": "Verify docker-compose starts all services",
-      "priority": "high",
-      "source": "body"
-    },
-    {
-      "type": "test",
-      "requirement": "Verify MongoDB is accessible on localhost:27017",
-      "priority": "high",
-      "source": "body"
-    },
-    {
-      "type": "test",
-      "requirement": "Verify pytest runs successfully",
-      "priority": "high",
-      "source": "body"
-    },
-    {
-      "type": "test",
-      "requirement": "Verify environment variables work correctly",
+      "requirement": "Database operations atomicity tests",
       "priority": "high",
       "source": "body"
     }
   ],
   "summary": {
-    "total": 16,
-    "tasks": 6,
-    "tests": 10,
-    "other": 0
+    "total": 14,
+    "tasks": 0,
+    "tests": 5,
+    "other": 9
   },
   "test_required": true,
-  "documentation_required": true,
+  "documentation_required": false,
   "priority": "normal"
 }
