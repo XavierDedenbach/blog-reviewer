@@ -2,8 +2,8 @@
   "pr_title": "PR-002: Database Models and Core Operations",
   "description": "Implement MongoDB document models and basic CRUD operations for the Blog Reviewer system. This PR establishes the core data layer with proper validation, indexing, and database connection management.\n\n**Size**: ~350 lines | **Duration**: 2-3 days  \n**Agent**: mongodb-manager with strict TDD approach",
   "claude_command": {
-    "command": "test",
-    "details": "Please implement this PR following the strict TDD requirements from our testing strategy. Use the mongodb-manager agent specialization for database schema design and query optimization.\n\nKey reminders:\n- Write failing tests FIRST - no implementation without failing tests  \n- Follow RED-GREEN-REFACTOR cycle strictly\n- NO placeholder tests (assert True) - all tests must verify real behavior\n- Reference database_schema.md for exact field specifications\n- Ensure 100% test coverage for all model operations\n- Focus on performance - indexes must measurably improve queries\n\nReady for implementation!"
+    "command": "implement",
+    "details": "retry implementation - API updated to Sonnet 4.0"
   },
   "requirements": [
     {
