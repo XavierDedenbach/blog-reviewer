@@ -57,6 +57,45 @@ class ClaudeCodeGenerator:
         
         return "\n\n".join(tests_content) if tests_content else "No existing tests found."
     
+    def read_project_documentation(self) -> Dict[str, str]:
+        """Read all project documentation files and return relevant content."""
+        project_req_dir = Path('project_requirements')
+        docs = {
+            'file_list': [],
+            'content': ''
+        }
+        
+        if not project_req_dir.exists():
+            return {'file_list': '- No project_requirements directory found', 'content': ''}
+        
+        # Define which docs are most important (include summaries, not full content to save tokens)
+        important_docs = {
+            'project_plan.md': 'Technical architecture and implementation plan',
+            'prd.md': 'Product requirements and business logic',
+            'api_specification.md': 'API endpoints and interface contracts',
+            'database_schema.md': 'Database design and data models',
+            'testing_strategy.md': 'Testing approach and standards',
+            'backend_requirements.md': 'Backend system requirements'
+        }
+        
+        content_sections = []
+        
+        for doc_file, description in important_docs.items():
+            doc_path = project_req_dir / doc_file
+            if doc_path.exists():
+                docs['file_list'].append(f"- {doc_file} ({description})")
+                try:
+                    # Read first 1500 chars of each doc for context (to avoid token limits)
+                    content = doc_path.read_text()[:1500]
+                    content_sections.append(f"### {doc_file}\n```\n{content}{'...' if len(doc_path.read_text()) > 1500 else ''}\n```")
+                except Exception as e:
+                    content_sections.append(f"### {doc_file}\n*Could not read file: {e}*")
+        
+        docs['file_list'] = '\n'.join(docs['file_list']) if docs['file_list'] else '- No documentation files found'
+        docs['content'] = '\n\n'.join(content_sections)
+        
+        return docs
+    
     def generate_code_with_claude(self, requirements: Dict[str, Any]) -> str:
         """Generate code using Claude API."""
         project_structure = self.read_project_structure()
@@ -72,14 +111,19 @@ class ClaudeCodeGenerator:
             pyproject_toml = Path('pyproject.toml').read_text()
         
         
+        # Read all project documentation for context
+        project_docs = self.read_project_documentation()
+        
         # Create comprehensive prompt
         prompt = f"""You are a senior Python developer working on a blog reviewer application. 
 
 IMPORTANT: Before implementing, please read and understand the full project context from these files:
-- project_plan.md (contains detailed technical architecture and implementation plan)
-- prd.md (contains product requirements and business logic)
+{project_docs['file_list']}
 
-These files provide critical context for the overall system design and requirements.
+These files provide critical context for the overall system design, requirements, and technical specifications.
+
+## Key Documentation Context
+{project_docs['content']}
 
 ## Project Context
 This is a blog content analysis and review system with the following structure:
