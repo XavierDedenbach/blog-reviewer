@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
@@ -103,6 +106,7 @@ class Review(BaseModel):
         if self.article_id:
             data['article_id'] = self.article_id
         return data
+<<<<<<< HEAD
 =======
 """
 Review model for the Blog Reviewer system.
@@ -228,3 +232,5 @@ class Review(BaseModel):
 # Update the PyObjectId class to be available at module level
 PyObjectId = PyObjectId
 >>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
+=======
+>>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
