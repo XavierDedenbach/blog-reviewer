@@ -71,8 +71,15 @@ class ClaudeCodeGenerator:
         if Path('pyproject.toml').exists():
             pyproject_toml = Path('pyproject.toml').read_text()
         
+        
         # Create comprehensive prompt
         prompt = f"""You are a senior Python developer working on a blog reviewer application. 
+
+IMPORTANT: Before implementing, please read and understand the full project context from these files:
+- project_plan.md (contains detailed technical architecture and implementation plan)
+- prd.md (contains product requirements and business logic)
+
+These files provide critical context for the overall system design and requirements.
 
 ## Project Context
 This is a blog content analysis and review system with the following structure:
