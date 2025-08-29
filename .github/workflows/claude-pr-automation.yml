@@ -56,7 +56,7 @@ jobs:
     - name: Parse PR Requirements
       id: parse-requirements
       run: |
-        python .github/scripts/parse_pr_requirements.py \
+        python .github/scripts/parse_pr_requirements_simple.py \
           --pr-title="${{ steps.pr-info.outputs.pr-title }}" \
           --pr-body="${{ steps.pr-info.outputs.pr-body }}" \
           --comment-body="${{ github.event.comment.body }}"
