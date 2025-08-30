@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
@@ -102,3 +103,128 @@ class Review(BaseModel):
         if self.article_id:
             data['article_id'] = self.article_id
         return data
+=======
+"""
+Review model for the Blog Reviewer system.
+"""
+
+from typing import List, Optional, Dict, Any
+from datetime import datetime, UTC
+from bson import ObjectId
+from pydantic import BaseModel, Field, field_validator
+from pydantic_core import core_schema
+
+
+class PyObjectId:
+    """Custom field for ObjectId validation."""
+    
+    @classmethod
+    def _validate(cls, v, info):
+        if isinstance(v, ObjectId):
+            return v
+        if isinstance(v, str):
+            try:
+                return ObjectId(v)
+            except Exception:
+                raise ValueError("Invalid ObjectId")
+        raise ValueError("Invalid ObjectId")
+    
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        return core_schema.with_info_plain_validator_function(
+            cls._validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda x: str(x) if x else None
+            )
+        )
+
+
+class ReviewConfig(BaseModel):
+    """Model for review configuration."""
+    check_grammar: bool = Field(default=True, description="Check grammar")
+    check_style: bool = Field(default=True, description="Check writing style")
+    check_technical_accuracy: bool = Field(default=True, description="Check technical accuracy")
+    check_readability: bool = Field(default=True, description="Check readability")
+    max_score: int = Field(default=100, ge=1, le=100, description="Maximum score")
+
+
+class ReviewScore(BaseModel):
+    """Model for review scores."""
+    overall_score: float = Field(..., ge=0, le=100, description="Overall review score")
+    grammar_score: Optional[float] = Field(None, ge=0, le=100, description="Grammar score")
+    style_score: Optional[float] = Field(None, ge=0, le=100, description="Style score")
+    technical_score: Optional[float] = Field(None, ge=0, le=100, description="Technical accuracy score")
+    readability_score: Optional[float] = Field(None, ge=0, le=100, description="Readability score")
+    feedback: List[str] = Field(default=[], description="Review feedback")
+    suggestions: List[str] = Field(default=[], description="Improvement suggestions")
+
+
+class Review(BaseModel):
+    """Review model for article reviews."""
+    
+    id: Optional[PyObjectId] = Field(None, alias="_id", description="Review ID")
+    article_id: PyObjectId = Field(..., description="Article being reviewed")
+    version: int = Field(..., ge=1, description="Review version")
+    purpose: str = Field(..., description="Review purpose")
+    target_audience: str = Field(..., description="Target audience")
+    review_config: ReviewConfig = Field(..., description="Review configuration")
+    status: str = Field(..., description="Review status")
+    scores: Optional[ReviewScore] = Field(None, description="Review scores")
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC), description="Creation timestamp")
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC), description="Last update timestamp")
+    completed_at: Optional[datetime] = Field(None, description="Completion timestamp")
+    
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
+    
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v):
+        valid_statuses = ['pending', 'in_progress', 'completed', 'failed']
+        if v not in valid_statuses:
+            raise ValueError(f'Review status must be one of: {valid_statuses}')
+        return v
+    
+    @field_validator('purpose')
+    @classmethod
+    def validate_purpose(cls, v):
+        valid_purposes = ['quality_assessment', 'content_improvement', 'fact_checking', 'style_review']
+        if v not in valid_purposes:
+            raise ValueError(f'Review purpose must be one of: {valid_purposes}')
+        return v
+    
+    @field_validator('target_audience')
+    @classmethod
+    def validate_target_audience(cls, v):
+        valid_audiences = ['general', 'developers', 'managers', 'students', 'professionals']
+        if v not in valid_audiences:
+            raise ValueError(f'Target audience must be one of: {valid_audiences}')
+        return v
+    
+    def model_dump(self, **kwargs):
+        """Custom model dump to handle ObjectId properly."""
+        data = super().model_dump(**kwargs)
+        if self.id:
+            data['_id'] = self.id
+        # Ensure article_id is an ObjectId for MongoDB
+        if self.article_id:
+            data['article_id'] = self.article_id
+        return data
+    
+    def model_dump_for_db(self, **kwargs):
+        """Custom model dump for database operations that preserves ObjectIds."""
+        data = self.model_dump(**kwargs)
+        # Convert string ObjectIds back to ObjectId for MongoDB
+        if isinstance(data.get('article_id'), str):
+            data['article_id'] = ObjectId(data['article_id'])
+        if isinstance(data.get('_id'), str):
+            data['_id'] = ObjectId(data['_id'])
+        return data
+
+
+# Update the PyObjectId class to be available at module level
+PyObjectId = PyObjectId
+>>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
