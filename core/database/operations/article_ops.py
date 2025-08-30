@@ -1,5 +1,15 @@
+<<<<<<< HEAD
 from typing import List, Optional, Dict, Any
 from bson import ObjectId
+=======
+"""
+Article database operations for the Blog Reviewer system.
+"""
+
+from typing import List, Optional, Dict, Any
+from bson import ObjectId
+from datetime import datetime, UTC
+>>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from core.database.models.article import Article
@@ -36,8 +46,12 @@ class ArticleOperations:
     async def update(self, article_id: ObjectId, update_data: Dict[str, Any]) -> bool:
         """Update an article."""
         # Add updated_at timestamp
+<<<<<<< HEAD
         from datetime import datetime
         update_data['updated_at'] = datetime.utcnow()
+=======
+        update_data['updated_at'] = datetime.now(UTC)
+>>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
         
         result = await self.collection.update_one(
             {"_id": article_id},

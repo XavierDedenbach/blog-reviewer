@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import pytest
 from datetime import datetime
 from bson import ObjectId
@@ -240,3 +241,6 @@ class TestReviewOperations:
         call_args = review_ops.db.reviews.update_one.call_args
         assert call_args[0][0] == {"_id": mock_object_id}
         assert call_args[0][1]["$set"]["status"] == "completed"
+=======
+
+>>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
