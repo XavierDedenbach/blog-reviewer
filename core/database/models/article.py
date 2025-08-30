@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
@@ -112,3 +113,128 @@ class Article(BaseModel):
         if self.review_id:
             data['review_id'] = self.review_id
         return data
+=======
+"""
+Article model for the Blog Reviewer system.
+"""
+
+from typing import List, Optional, Dict, Any
+from datetime import datetime, UTC
+from bson import ObjectId
+from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic_core import core_schema
+
+
+class PyObjectId:
+    """Custom field for ObjectId validation."""
+    
+    @classmethod
+    def _validate(cls, v, info):
+        if isinstance(v, ObjectId):
+            return v
+        if isinstance(v, str):
+            try:
+                return ObjectId(v)
+            except Exception:
+                raise ValueError("Invalid ObjectId")
+        raise ValueError("Invalid ObjectId")
+    
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        return core_schema.with_info_plain_validator_function(
+            cls._validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda x: str(x) if x else None
+            )
+        )
+
+
+class ArticleImage(BaseModel):
+    """Model for article images."""
+    url: str = Field(..., description="Image URL")
+    alt_text: Optional[str] = Field(None, description="Alt text for accessibility")
+    caption: Optional[str] = Field(None, description="Image caption")
+
+
+class Article(BaseModel):
+    """Article model for blog content."""
+    
+    id: Optional[PyObjectId] = Field(None, alias="_id", description="Article ID")
+    title: str = Field(..., min_length=1, max_length=500, description="Article title")
+    content: str = Field(..., min_length=1, description="Article content")
+    article_type: str = Field(..., description="Type of article")
+    review_status: str = Field(..., description="Current review status")
+    purpose: str = Field(..., description="Purpose of the article")
+    word_count: Optional[int] = Field(None, description="Word count")
+    slug: Optional[str] = Field(None, description="URL slug")
+    images: Optional[List[ArticleImage]] = Field(default=[], description="Article images")
+    source: str = Field(..., description="Source of the article")
+    tags: Optional[List[str]] = Field(default=[], description="Article tags")
+    metadata: Optional[Dict[str, Any]] = Field(default={}, description="Additional metadata")
+    author_id: Optional[PyObjectId] = Field(None, description="Author ID")
+    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC), description="Creation timestamp")
+    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(UTC), description="Last update timestamp")
+    
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
+    
+    @field_validator('article_type')
+    @classmethod
+    def validate_article_type(cls, v):
+        valid_types = ['draft', 'published', 'archived']
+        if v not in valid_types:
+            raise ValueError(f'Article type must be one of: {valid_types}')
+        return v
+    
+    @field_validator('review_status')
+    @classmethod
+    def validate_review_status(cls, v):
+        valid_statuses = ['pending', 'in_progress', 'completed', 'failed']
+        if v not in valid_statuses:
+            raise ValueError(f'Review status must be one of: {valid_statuses}')
+        return v
+    
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Title cannot be empty")
+        return v.strip()
+    
+    @field_validator('content')
+    @classmethod
+    def validate_content(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Content cannot be empty")
+        return v.strip()
+    
+    @model_validator(mode='after')
+    def compute_fields(self):
+        """Compute slug and word count after validation."""
+        if not self.slug:
+            self.slug = self.title.lower().replace(' ', '-').replace('_', '-')
+            # Remove special characters
+            import re
+            self.slug = re.sub(r'[^a-z0-9\-]', '', self.slug)
+            # Remove trailing dashes
+            self.slug = self.slug.strip('-')
+        
+        if not self.word_count:
+            self.word_count = len(self.content.split())
+        
+        return self
+    
+    def model_dump(self, **kwargs):
+        """Custom model dump to handle ObjectId properly."""
+        data = super().model_dump(**kwargs)
+        if self.id:
+            data['_id'] = self.id
+        return data
+
+
+# Update the PyObjectId class to be available at module level
+PyObjectId = PyObjectId
+>>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
