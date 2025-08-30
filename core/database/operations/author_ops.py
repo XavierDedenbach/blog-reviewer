@@ -1,5 +1,8 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
 from typing import List, Optional, Dict, Any
 from bson import ObjectId
 =======
@@ -11,10 +14,13 @@ from typing import List, Optional, Dict, Any
 from bson import ObjectId
 from datetime import datetime, UTC
 >>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
+<<<<<<< HEAD
 =======
 from typing import List, Optional, Dict, Any
 from bson import ObjectId
 >>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from core.database.models.author import Author
@@ -60,15 +66,21 @@ class AuthorOperations:
         # Add updated_at timestamp
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
         from datetime import datetime
         update_data['updated_at'] = datetime.utcnow()
 =======
         update_data['updated_at'] = datetime.now(UTC)
 >>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
+<<<<<<< HEAD
 =======
         from datetime import datetime
         update_data['updated_at'] = datetime.utcnow()
 >>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
         
         result = await self.collection.update_one(
             {"_id": author_id},
@@ -83,8 +95,11 @@ class AuthorOperations:
     
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
     async def list(self, filters: Optional[Dict[str, Any]] = None,
                    skip: int = 0, limit: int = 50,
                    sort_by: str = "created_at", sort_order: int = -1) -> List[Author]:
@@ -95,25 +110,37 @@ class AuthorOperations:
         cursor = self.collection.find(filters)
         cursor = cursor.skip(skip).limit(limit).sort(sort_by, sort_order)
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
 =======
     async def list(self, skip: int = 0, limit: int = 50) -> List[Author]:
         """List authors with pagination."""
         cursor = self.collection.find().skip(skip).limit(limit).sort("created_at", -1)
 >>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
+<<<<<<< HEAD
 =======
 >>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
         
         authors = []
         async for author_data in cursor:
             authors.append(Author(**author_data))
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         
 =======
 >>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
 =======
         
 >>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
+=======
+        
+=======
+>>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
         return authors
     
     async def get_by_expertise(self, expertise: str) -> List[Author]:
@@ -141,8 +168,11 @@ class AuthorOperations:
     
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
     async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """Count authors with optional filters."""
         if filters is None:
@@ -155,6 +185,9 @@ class AuthorOperations:
             {"_id": author_id},
             {"$set": {"total_articles": count, "updated_at": Author().updated_at}}
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
 =======
     async def count(self) -> int:
         """Count total authors."""
@@ -166,7 +199,10 @@ class AuthorOperations:
             {"_id": author_id},
             {"$set": {"total_articles": count, "updated_at": datetime.now(UTC)}}
 >>>>>>> 378fefe (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
+<<<<<<< HEAD
 =======
 >>>>>>> b2b58d2 (PR-002: Database Models and Core Operations (#9))
+=======
+>>>>>>> 14a58e6 (Updated to include the scope of PR-01. All tests passed for PR-01 and PR-02. All mocking removed with a instantiated MongoDb instance)
         )
         return result.modified_count > 0
