@@ -54,4 +54,10 @@ tenacity==9.1.2
 pymongo==4.11.0
 python-multipart==0.0.16
 
+# External Scraping Dependencies
+aiohttp==3.10.11
+beautifulsoup4==4.12.3
+html2text==2020.1.16
+lxml==5.3.0
+
 # Add any other top-level packages your project specifically requires below
