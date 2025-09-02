@@ -1,199 +1,223 @@
 #!/usr/bin/env python3
 """
-Parse PR requirements from title, body, and comment to extract development tasks.
+Enhanced PR requirements parser for GitHub Actions automation.
 
-This script analyzes PR information and comments to generate structured requirements
-for Claude code generation.
+Parses PR templates with comprehensive analysis including complexity assessment,
+effort estimation, and implementation context for the AI agent.
 """
 
 import argparse
 import json
 import re
 import sys
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 
-def extract_requirements_from_text(text: str) -> List[Dict[str, Any]]:
-    """Extract requirements from structured PR text."""
+def extract_requirements(text: str) -> List[Dict[str, Any]]:
+    """Extract all checkbox requirements from the PR template with enhanced analysis."""
     requirements = []
     
-    # Extract Tasks section
-    tasks_section = extract_section(text, "## Tasks")
-    if tasks_section:
-        task_items = extract_checkbox_items(tasks_section)
-        requirements.extend([
-            {"type": "task", "requirement": item, "priority": "high", "section": "tasks"}
-            for item in task_items
-        ])
+    # Extract all checkbox items (- [ ] format)
+    checkbox_pattern = r'^\s*-\s*\[\s*\]\s*(.+)$'
+    matches = re.findall(checkbox_pattern, text, re.MULTILINE)
     
-    # Extract Testing Requirements (including nested subsections)
-    testing_section = extract_section(text, "## Testing Requirements")
-    if testing_section:
-        test_items = extract_checkbox_items(testing_section)
-        requirements.extend([
-            {"type": "test", "requirement": item, "priority": "high", "section": "testing"}
-            for item in test_items
-        ])
+    for match in matches:
+        requirement_text = match.strip()
         
-        # Also extract from nested testing subsections
-        for subsection in ["### Unit Tests", "### Integration Tests", "### Infrastructure Tests"]:
-            sub_content = extract_section(testing_section, subsection)
-            if sub_content:
-                sub_items = extract_checkbox_items(sub_content)
-                requirements.extend([
-                    {"type": "test", "requirement": item, "priority": "high", "section": subsection.lower().replace("### ", "").replace(" ", "_")}
-                    for item in sub_items
-                ])
-    
-    # Extract Acceptance Criteria
-    acceptance_section = extract_section(text, "## Acceptance Criteria")
-    if acceptance_section:
-        acceptance_items = extract_checkbox_items(acceptance_section)
-        requirements.extend([
-            {"type": "acceptance", "requirement": item, "priority": "critical", "section": "acceptance"}
-            for item in acceptance_items
-        ])
-    
-    # Extract from Overview/Description if no structured sections found
-    if not requirements:
-        overview = extract_section(text, "## Overview") or extract_section(text, "## Description")
-        if overview:
-            general_items = extract_general_requirements(overview)
-            requirements.extend([
-                {"type": "general", "requirement": item, "priority": "normal", "section": "general"}
-                for item in general_items
-            ])
+        # Enhanced categorization based on keywords
+        if any(word in requirement_text.lower() for word in ['test', 'verify', 'check', 'validate']):
+            req_type = "test"
+            priority = "high"
+        elif any(word in requirement_text.lower() for word in ['create', 'set up', 'configure', 'add', 'implement', 'build']):
+            req_type = "task"
+            priority = "high"
+        elif any(word in requirement_text.lower() for word in ['fix', 'bug', 'error', 'issue']):
+            req_type = "bugfix"
+            priority = "high"
+        elif any(word in requirement_text.lower() for word in ['refactor', 'optimize', 'improve']):
+            req_type = "improvement"
+            priority = "normal"
+        elif any(word in requirement_text.lower() for word in ['document', 'docs', 'comment']):
+            req_type = "documentation"
+            priority = "normal"
+        else:
+            req_type = "requirement"
+            priority = "normal"
+        
+        # Assess complexity
+        complexity = assess_requirement_complexity(requirement_text)
+        
+        # Determine priority with more granular analysis
+        priority = determine_requirement_priority(requirement_text, req_type, priority)
+        
+        requirements.append({
+            "type": req_type,
+            "requirement": requirement_text,
+            "priority": priority,
+            "complexity": complexity,
+            "source": "body"
+        })
     
     return requirements
 
 
-def extract_section(text: str, section_header: str) -> Optional[str]:
-    """Extract content of a specific section from markdown text."""
-    # For main sections (##), stop at next ## followed by space or end
-    if section_header.startswith('## '):
-        pattern = rf'{re.escape(section_header)}\s*\n(.*?)(?=\n## |\Z)'
-    # For subsections (###), stop at next ### or ## or end  
-    elif section_header.startswith('### '):
-        pattern = rf'{re.escape(section_header)}\s*\n(.*?)(?=\n###|\n## |\Z)'
+def assess_requirement_complexity(requirement_text: str) -> str:
+    """Assess complexity of a requirement based on content analysis."""
+    text_lower = requirement_text.lower()
+    
+    # High complexity indicators
+    if any(word in text_lower for word in ['complex', 'major', 'significant', 'advanced', 'integration', 'system', 'architecture']):
+        return "high"
+    elif any(word in text_lower for word in ['database', 'api', 'service', 'authentication', 'security']):
+        return "high"
+    elif any(word in text_lower for word in ['simple', 'basic', 'minor', 'small', 'update']):
+        return "low"
     else:
-        pattern = rf'{re.escape(section_header)}\s*\n(.*?)(?=\n## |\Z)'
-    
-    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-    return match.group(1).strip() if match else None
+        return "medium"
 
 
-def extract_checkbox_items(text: str) -> List[str]:
-    """Extract items from checkbox lists (- [ ] format)."""
-    checkbox_pattern = r'^\s*-\s*\[\s*\]\s*(.+)$'
-    matches = re.findall(checkbox_pattern, text, re.MULTILINE)
-    return [match.strip() for match in matches if match.strip()]
+def determine_requirement_priority(requirement_text: str, req_type: str, base_priority: str) -> str:
+    """Determine priority for a specific requirement with enhanced analysis."""
+    text_lower = requirement_text.lower()
+    
+    # Critical priority indicators
+    if any(word in text_lower for word in ['critical', 'urgent', 'security', 'bug', 'fix', 'error', 'broken']):
+        return "critical"
+    elif any(word in text_lower for word in ['important', 'core', 'essential', 'required', 'blocking']):
+        return "high"
+    elif req_type in ['test', 'bugfix']:
+        return "high"
+    elif any(word in text_lower for word in ['nice to have', 'optional', 'enhancement']):
+        return "low"
+    else:
+        return base_priority
 
 
-def extract_general_requirements(text: str) -> List[str]:
-    """Extract general requirements from description text."""
-    requirements = []
-    
-    # Look for action verbs
-    action_patterns = [
-        r'\b(implement|add|create|build|develop|write|set up|configure|establish)\s+(.+?)(?:\.|\n|$)',
-        r'\b(need to|must|should|will)\s+(.+?)(?:\.|\n|$)'
-    ]
-    
-    for pattern in action_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        for match in matches:
-            requirements.append(f"{match[0].capitalize()} {match[1].strip()}")
-    
-    return [req for req in requirements if req.strip()]
+def extract_description(text: str) -> str:
+    """Extract the description section."""
+    desc_pattern = r'## Description\s*\n(.*?)(?=\n##|\Z)'
+    match = re.search(desc_pattern, text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return ""
 
 
 def parse_claude_command(comment_body: str) -> Dict[str, Any]:
-    """Parse @claude command from comment body."""
+    """Parse @claude command from comment body with enhanced analysis."""
     claude_pattern = r'@claude\s+(.+)'
     match = re.search(claude_pattern, comment_body, re.IGNORECASE | re.DOTALL)
     
     if not match:
-        return {"command": "implement", "details": ""}
+        return {
+            "command": "implement", 
+            "details": "implement the requirements",
+            "urgency": "normal",
+            "scope": "full"
+        }
     
     command_text = match.group(1).strip()
     
-    # Detect command type
-    if any(word in command_text.lower() for word in ['implement', 'code', 'write', 'create']):
-        command_type = "implement"
-    elif any(word in command_text.lower() for word in ['test', 'tests']):
-        command_type = "test"
-    elif any(word in command_text.lower() for word in ['review', 'check']):
-        command_type = "review"
-    elif any(word in command_text.lower() for word in ['fix', 'bug', 'error']):
-        command_type = "fix"
-    else:
-        command_type = "implement"
+    # Enhanced command detection
+    command_type = detect_command_type(command_text)
+    urgency = detect_urgency(command_text)
+    scope = detect_scope(command_text)
     
     return {
         "command": command_type,
-        "details": command_text
+        "details": command_text,
+        "urgency": urgency,
+        "scope": scope
     }
 
 
+def detect_command_type(command_text: str) -> str:
+    """Detect the type of command with enhanced analysis."""
+    command_lower = command_text.lower()
+    
+    if any(word in command_lower for word in ['implement', 'code', 'write', 'create', 'build', 'develop']):
+        return "implement"
+    elif any(word in command_lower for word in ['test', 'tests', 'verify', 'validate', 'check']):
+        return "test"
+    elif any(word in command_lower for word in ['review', 'check', 'analyze', 'audit', 'inspect']):
+        return "review"
+    elif any(word in command_lower for word in ['fix', 'bug', 'error', 'issue', 'resolve']):
+        return "fix"
+    elif any(word in command_lower for word in ['refactor', 'optimize', 'improve', 'enhance']):
+        return "refactor"
+    elif any(word in command_lower for word in ['document', 'docs', 'comment', 'explain']):
+        return "document"
+    else:
+        return "implement"
+
+
+def detect_urgency(command_text: str) -> str:
+    """Detect urgency level from command."""
+    command_lower = command_text.lower()
+    
+    if any(word in command_lower for word in ['urgent', 'asap', 'immediately', 'critical', 'emergency']):
+        return "critical"
+    elif any(word in command_lower for word in ['soon', 'quickly', 'fast', 'priority']):
+        return "high"
+    else:
+        return "normal"
+
+
+def detect_scope(command_text: str) -> str:
+    """Detect scope of work from command."""
+    command_lower = command_text.lower()
+    
+    if any(word in command_lower for word in ['minimal', 'basic', 'simple', 'quick']):
+        return "minimal"
+    elif any(word in command_lower for word in ['comprehensive', 'full', 'complete', 'thorough', 'detailed']):
+        return "comprehensive"
+    else:
+        return "full"
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Parse PR requirements for Claude automation')
+    parser = argparse.ArgumentParser(description='Parse simplified PR requirements')
     parser.add_argument('--pr-title', required=True, help='PR title')
     parser.add_argument('--pr-body', required=True, help='PR body')
     parser.add_argument('--comment-body', required=True, help='Comment body')
     
     args = parser.parse_args()
     
-    # Extract requirements from all sources
-    all_requirements = []
-    
-    # From PR title (simple extraction)
-    if args.pr_title:
-        title_reqs = extract_general_requirements(args.pr_title)
-        all_requirements.extend([
-            {"source": "title", "type": "general", "requirement": req, "priority": "high", "section": "title"}
-            for req in title_reqs
-        ])
-    
-    # From PR body (structured extraction)
-    if args.pr_body:
-        body_reqs = extract_requirements_from_text(args.pr_body)
-        for req in body_reqs:
-            req["source"] = "body"
-            all_requirements.append(req)
-    
-    # Parse Claude command
+    # Extract requirements and description
+    requirements = extract_requirements(args.pr_body) if args.pr_body else []
+    description = extract_description(args.pr_body) if args.pr_body else ""
     claude_command = parse_claude_command(args.comment_body)
     
-    # Analyze requirements for better categorization
-    task_count = len([r for r in all_requirements if r.get("type") == "task"])
-    test_count = len([r for r in all_requirements if r.get("type") == "test"])
-    acceptance_count = len([r for r in all_requirements if r.get("type") == "acceptance"])
+    # Categorize requirements
+    tasks = [r for r in requirements if r["type"] == "task"]
+    tests = [r for r in requirements if r["type"] == "test"]
+    other = [r for r in requirements if r["type"] == "requirement"]
     
-    # Generate structured requirements
+    # Generate output
     requirements_data = {
         "pr_title": args.pr_title,
+        "description": description,
         "claude_command": claude_command,
-        "requirements": all_requirements,
+        "requirements": requirements,
         "summary": {
-            "total_requirements": len(all_requirements),
-            "tasks": task_count,
-            "tests": test_count,
-            "acceptance_criteria": acceptance_count
+            "total": len(requirements),
+            "tasks": len(tasks),
+            "tests": len(tests),
+            "other": len(other)
         },
-        "priority": "high" if "urgent" in args.comment_body.lower() else "normal",
-        "test_required": test_count > 0 or "test" in args.comment_body.lower(),
-        "documentation_required": "docs" in args.comment_body.lower() or "documentation" in args.pr_body.lower() if args.pr_body else False
+        "test_required": len(tests) > 0,
+        "documentation_required": "docs" in args.comment_body.lower() or "documentation" in args.pr_body.lower() if args.pr_body else False,
+        "priority": "high" if "urgent" in args.comment_body.lower() else "normal"
     }
     
     # Write to file
     with open('pr_requirements.json', 'w') as f:
         json.dump(requirements_data, f, indent=2)
     
-    print(f"Parsed {len(all_requirements)} requirements:")
-    print(f"  - Tasks: {requirements_data['summary']['tasks']}")
-    print(f"  - Tests: {requirements_data['summary']['tests']}")
-    print(f"  - Acceptance Criteria: {requirements_data['summary']['acceptance_criteria']}")
-    print(f"Claude command: {claude_command['command']} - {claude_command['details'][:50]}...")
+    print(f"✅ Parsed {len(requirements)} requirements:")
+    print(f"   📋 Tasks: {len(tasks)}")
+    print(f"   🧪 Tests: {len(tests)}")
+    print(f"   📝 Other: {len(other)}")
+    print(f"🤖 Command: {claude_command['command']}")
     
     return 0
 

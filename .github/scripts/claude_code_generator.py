@@ -85,9 +85,9 @@ class ClaudeCodeGenerator:
             if doc_path.exists():
                 docs['file_list'].append(f"- {doc_file} ({description})")
                 try:
-                    # Read first 1500 chars of each doc for context (to avoid token limits)
-                    content = doc_path.read_text()[:1500]
-                    content_sections.append(f"### {doc_file}\n```\n{content}{'...' if len(doc_path.read_text()) > 1500 else ''}\n```")
+                    # Read first 2000 chars of each doc for better context (increased from 1500)
+                    content = doc_path.read_text()[:2000]
+                    content_sections.append(f"### {doc_file}\n```\n{content}{'...' if len(doc_path.read_text()) > 2000 else ''}\n```")
                 except Exception as e:
                     content_sections.append(f"### {doc_file}\n*Could not read file: {e}*")
         
@@ -97,7 +97,7 @@ class ClaudeCodeGenerator:
         return docs
     
     def generate_code_with_claude(self, requirements: Dict[str, Any]) -> str:
-        """Generate code using Claude API."""
+        """Generate code using Claude API with iterative refinement."""
         project_structure = self.read_project_structure()
         existing_tests = self.read_existing_tests()
         
@@ -115,7 +115,28 @@ class ClaudeCodeGenerator:
         project_docs = self.read_project_documentation()
         
         # Create comprehensive prompt
-        prompt = f"""You are a senior Python developer working on a blog reviewer application. 
+        prompt = f"""You are an EXPERT Python developer and system architect working on the AI Blog Reviewer project. 
+
+## CRITICAL INSTRUCTIONS
+You MUST act as an INDEPENDENT AI AGENT that thinks systematically:
+
+1. **ANALYZES requirements thoroughly** - Break down each requirement into specific, measurable components
+2. **BREAKS DOWN complex tasks** - Create a step-by-step implementation plan with clear dependencies
+3. **FOLLOWS existing project patterns** - Study the existing code structure and replicate patterns exactly
+4. **DELIVERS COMPLETE SOLUTIONS** - Ensure every requirement is fully addressed with working code
+5. **EXPLAINS your reasoning** - Provide clear rationale for every architectural and implementation decision
+6. **VALIDATES your approach** - Self-check that your solution actually solves the stated problem
+
+## THINKING METHODOLOGY
+Use this systematic approach:
+- **Step 1**: Read and understand ALL context files completely
+- **Step 2**: Analyze each requirement individually - what does it mean, what does it need?
+- **Step 3**: Identify dependencies between requirements and existing code
+- **Step 4**: Design the solution architecture step by step
+- **Step 5**: Plan the implementation order considering dependencies
+- **Step 6**: Write comprehensive tests that define expected behavior
+- **Step 7**: Implement code that makes tests pass
+- **Step 8**: Validate integration with existing codebase
 
 IMPORTANT: Before implementing, please read and understand the full project context from these files:
 {project_docs['file_list']}
@@ -155,39 +176,102 @@ Requirements to implement:
 Test Required: {requirements['test_required']}
 Documentation Required: {requirements['documentation_required']}
 
-## Instructions
-Please follow Test-Driven Development (TDD) approach:
+## YOUR APPROACH - THINK STEP BY STEP
+1. **ANALYZE**: Break down requirements into specific, measurable tasks
+2. **PLAN**: Design solution architecture considering existing patterns  
+3. **DESIGN**: Create detailed implementation plan with dependencies
+4. **IMPLEMENT**: Write tests first, then code following TDD
+5. **VALIDATE**: Verify each requirement is met with specific checks
+6. **INTEGRATE**: Ensure seamless integration with existing codebase
 
-1. **First, write comprehensive tests** that define the expected behavior
-2. **Then implement the code** that makes the tests pass
-3. **Ensure code quality** with proper error handling, type hints, and docstrings
-4. **Follow project patterns** based on existing code structure
-5. **Use existing dependencies** where possible
+## THINKING PROCESS
+Before writing any code, you MUST:
+- List each requirement and what it means
+- Identify potential challenges and dependencies
+- Plan the implementation order
+- Consider edge cases and error scenarios
+- Design for maintainability and testing
 
 ## Output Format
-Provide your response in the following format:
+Provide your response in this EXACT format:
+
+### REQUIREMENT_ANALYSIS
+Break down each requirement into specific, implementable tasks. For each requirement:
+- What does it mean exactly?
+- What components does it need?
+- What are the dependencies?
+- What are potential challenges?
+
+### SOLUTION_ARCHITECTURE
+Explain your design decisions and how they integrate with existing code:
+- Why did you choose this approach?
+- How does it follow existing patterns?
+- What alternatives did you consider?
+- How does it handle edge cases?
+
+### IMPLEMENTATION_STEPS
+List the exact steps you will take to implement the solution:
+- Step-by-step breakdown with clear dependencies
+- What needs to be built first?
+- How do components interact?
+- What testing is needed at each step?
 
 ### FILES_TO_CREATE_OR_MODIFY
 List all files that need to be created or modified with brief descriptions.
 
 ### TEST_FILES
-For each test file, provide:
 ```python
 # File: path/to/test_file.py
 [complete test file content]
 ```
 
 ### IMPLEMENTATION_FILES  
-For each implementation file, provide:
 ```python
 # File: path/to/implementation_file.py
 [complete implementation file content]
 ```
 
-### ADDITIONAL_FILES
-Any configuration, documentation, or other files needed.
+### VALIDATION_CHECKLIST
+For each requirement, provide specific validation criteria:
+- [ ] Requirement 1: [specific validation - how will you verify this works?]
+- [ ] Requirement 2: [specific validation - what test proves this works?]
+- [ ] Integration: [how will you verify it works with existing code?]
+- [ ] Testing: [what test coverage is needed and why?]
+- [ ] Error Handling: [how do you handle failure scenarios?]
+- [ ] Performance: [are there any performance considerations?]
+- [ ] Security: [are there any security implications?]
 
-Generate production-ready code that follows Python best practices, includes proper error handling, and integrates well with the existing codebase.
+### EXPLANATION
+Explain your reasoning for each design decision and how this solution addresses the requirements.
+
+### SELF-VALIDATION
+After completing your solution, verify each point with specific evidence:
+- [ ] Does this solve ALL stated requirements? [List each requirement and how your solution addresses it]
+- [ ] Are there any edge cases I missed? [Identify potential edge cases and how you handle them]
+- [ ] Does this integrate well with existing code? [Explain how it follows existing patterns and integrates seamlessly]
+- [ ] Are my tests comprehensive? [Detail what scenarios your tests cover and why they're sufficient]
+- [ ] Is my error handling robust? [Describe error scenarios and how you handle them gracefully]
+- [ ] Have I explained my design decisions clearly? [Summarize key decisions and rationale]
+- [ ] Is this solution maintainable? [Explain how future developers can understand and modify this code]
+- [ ] Are there any performance implications? [Consider scalability and efficiency]
+
+## FINAL INSTRUCTIONS
+Remember: You are an independent AI agent. 
+
+**DO NOT START CODING UNTIL YOU HAVE:**
+1. ✅ Analyzed ALL requirements thoroughly
+2. ✅ Designed the complete solution architecture
+3. ✅ Planned the implementation steps
+4. ✅ Identified all dependencies and challenges
+
+**THEN:**
+1. Write comprehensive tests first (TDD approach)
+2. Implement code that makes tests pass
+3. Validate against all requirements
+4. Ensure seamless integration
+5. Provide detailed explanations for every decision
+
+Think through this systematically and deliver a complete, working solution that a senior developer would be proud of.
 """
 
         headers = {
@@ -198,7 +282,7 @@ Generate production-ready code that follows Python best practices, includes prop
         
         data = {
             'model': 'claude-sonnet-4-20250514',
-            'max_tokens': 8000,
+            'max_tokens': 16000,
             'messages': [
                 {
                     'role': 'user',
@@ -212,7 +296,7 @@ Generate production-ready code that follows Python best practices, includes prop
             print(f"Using model: {data['model']}")
             print(f"API version: {headers['anthropic-version']}")
             
-            response = requests.post(self.anthropic_url, headers=headers, json=data)
+            response = requests.post(self.anthropic_url, headers=headers, json=data, timeout=120)
             
             print(f"Response status: {response.status_code}")
             if response.status_code != 200:
@@ -222,12 +306,64 @@ Generate production-ready code that follows Python best practices, includes prop
             response.raise_for_status()
             
             result = response.json()
-            return result['content'][0]['text']
+            initial_response = result['content'][0]['text']
+            
+            # Validate response format and refine if needed
+            if not self._validate_response_format(initial_response):
+                print("⚠️ Response format incomplete, requesting refinement...")
+                refinement_prompt = self._create_refinement_prompt(initial_response, requirements)
+                refined_response = self._call_claude_api(refinement_prompt)
+                if refined_response and "Error" not in refined_response:
+                    return refined_response
+            
+            return initial_response
             
         except requests.exceptions.RequestException as e:
             print(f"Error calling Claude API: {e}")
             print(f"Full error details: {response.text if 'response' in locals() else 'No response available'}")
             return f"Error generating code: {e}"
+    
+    def _validate_response_format(self, response: str) -> bool:
+        """Validate that response has required sections."""
+        required_sections = [
+            'REQUIREMENT_ANALYSIS',
+            'SOLUTION_ARCHITECTURE', 
+            'IMPLEMENTATION_STEPS',
+            'TEST_FILES',
+            'IMPLEMENTATION_FILES',
+            'VALIDATION_CHECKLIST',
+            'SELF_VALIDATION'
+        ]
+        
+        for section in required_sections:
+            if section not in response:
+                return False
+        return True
+    
+    def _create_refinement_prompt(self, incomplete_response: str, requirements: Dict[str, Any]) -> str:
+        """Create a prompt to refine incomplete responses."""
+        return f"""Your previous response was incomplete. Please provide a COMPLETE response with ALL required sections:
+
+## MISSING SECTIONS
+Your response must include these exact sections:
+- REQUIREMENT_ANALYSIS
+- SOLUTION_ARCHITECTURE  
+- IMPLEMENTATION_STEPS
+- TEST_FILES
+- IMPLEMENTATION_FILES
+- VALIDATION_CHECKLIST
+- EXPLANATION
+- SELF_VALIDATION
+
+## ORIGINAL REQUIREMENTS
+{requirements['pr_title']}
+{chr(10).join([f"- {req['requirement']}" for req in requirements['requirements']])}
+
+## YOUR INCOMPLETE RESPONSE
+{incomplete_response[:1000]}...
+
+Please provide a COMPLETE response with all sections properly formatted.
+"""
     
     def parse_and_write_files(self, claude_response: str) -> List[str]:
         """Parse Claude's response and write files to disk."""
