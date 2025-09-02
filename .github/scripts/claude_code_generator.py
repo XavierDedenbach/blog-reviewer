@@ -171,7 +171,7 @@ PR Title: {requirements['pr_title']}
 Claude Command: {requirements['claude_command']['command']} - {requirements['claude_command']['details']}
 
 Requirements to implement:
-{chr(10).join([f"- {req['requirement']} (from {req['source']})" for req in requirements['requirements']])}
+{chr(10).join([f"- {req['requirement']} (from {req.get('source', 'unknown')})" for req in requirements['requirements']])}
 
 Test Required: {requirements['test_required']}
 Documentation Required: {requirements['documentation_required']}
@@ -274,6 +274,22 @@ Remember: You are an independent AI agent.
 Think through this systematically and deliver a complete, working solution that a senior developer would be proud of.
 """
 
+        # Use retry logic for API calls
+        print("📡 Making API request to Claude with retry logic...")
+        initial_response = self._make_claude_request_with_retry(prompt)
+        
+        # Validate response format and refine if needed
+        if not self._validate_response_format(initial_response):
+            print("⚠️ Response format incomplete, requesting refinement...")
+            refinement_prompt = self._create_refinement_prompt(requirements, initial_response)
+            refined_response = self._make_claude_request_with_retry(refinement_prompt)
+            if refined_response and "Error" not in refined_response:
+                return refined_response
+        
+        return initial_response
+    
+    def _make_claude_request_with_retry(self, prompt: str, max_retries: int = 3) -> str:
+        """Make a request to Claude API with retry logic and exponential backoff."""
         headers = {
             'Content-Type': 'application/json',
             'x-api-key': self.api_key,
@@ -291,37 +307,54 @@ Think through this systematically and deliver a complete, working solution that 
             ]
         }
         
-        try:
-            print(f"Making API request to: {self.anthropic_url}")
-            print(f"Using model: {data['model']}")
-            print(f"API version: {headers['anthropic-version']}")
-            
-            response = requests.post(self.anthropic_url, headers=headers, json=data, timeout=120)
-            
-            print(f"Response status: {response.status_code}")
-            if response.status_code != 200:
-                print(f"Response headers: {response.headers}")
-                print(f"Response text: {response.text}")
-            
-            response.raise_for_status()
-            
-            result = response.json()
-            initial_response = result['content'][0]['text']
-            
-            # Validate response format and refine if needed
-            if not self._validate_response_format(initial_response):
-                print("⚠️ Response format incomplete, requesting refinement...")
-                refinement_prompt = self._create_refinement_prompt(initial_response, requirements)
-                refined_response = self._call_claude_api(refinement_prompt)
-                if refined_response and "Error" not in refined_response:
-                    return refined_response
-            
-            return initial_response
-            
-        except requests.exceptions.RequestException as e:
-            print(f"Error calling Claude API: {e}")
-            print(f"Full error details: {response.text if 'response' in locals() else 'No response available'}")
-            return f"Error generating code: {e}"
+        for attempt in range(max_retries):
+            try:
+                print(f"Making API request to: {self.anthropic_url} (attempt {attempt + 1}/{max_retries})")
+                print(f"Using model: {data['model']}")
+                print(f"API version: {headers['anthropic-version']}")
+                
+                # Exponential backoff: 300s, 600s, 900s
+                timeout = 300 + (attempt * 300)
+                print(f"Timeout set to: {timeout} seconds")
+                
+                response = requests.post(self.anthropic_url, headers=headers, json=data, timeout=timeout)
+                
+                print(f"Response status: {response.status_code}")
+                if response.status_code != 200:
+                    print(f"Response headers: {response.headers}")
+                    print(f"Response text: {response.text}")
+                
+                response.raise_for_status()
+                
+                result = response.json()
+                initial_response = result['content'][0]['text']
+                
+                print(f"✅ API request successful on attempt {attempt + 1}")
+                return initial_response
+                
+            except requests.exceptions.Timeout as e:
+                print(f"⚠️ Timeout error on attempt {attempt + 1}: {e}")
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 5  # 5s, 10s, 20s
+                    print(f"Waiting {wait_time} seconds before retry...")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    print(f"❌ All retry attempts failed due to timeout")
+                    return f"Error generating code: {e} after {max_retries} attempts"
+                    
+            except requests.exceptions.RequestException as e:
+                print(f"❌ Request error on attempt {attempt + 1}: {e}")
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 5  # 5s, 10s, 20s
+                    print(f"Waiting {wait_time} seconds before retry...")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    print(f"❌ All retry attempts failed")
+                    return f"Error generating code: {e} after {max_retries} attempts"
+        
+        return "Error: Failed to get response from Claude API after all retries"
     
     def _validate_response_format(self, response: str) -> bool:
         """Validate that response has required sections."""
@@ -440,6 +473,22 @@ def main():
     print(f"Created/modified {len(created_files)} files:")
     for file_path in created_files:
         print(f"  - {file_path}")
+    
+    # Validate that actual implementation files were created
+    if len(created_files) == 0:
+        print("❌ ERROR: No implementation files were created!")
+        print("This indicates the Claude script failed to generate actual code.")
+        print("The workflow should fail to prevent false positive commits.")
+        return 1
+    
+    # Check for actual Python files (not just markdown)
+    python_files = [f for f in created_files if f.endswith('.py')]
+    if len(python_files) == 0:
+        print("❌ ERROR: No Python implementation files were created!")
+        print("Only markdown files were generated, which indicates failure.")
+        return 1
+    
+    print(f"✅ Successfully created {len(created_files)} files including {len(python_files)} Python files")
     
     # Save Claude's full response for debugging
     with open('claude_response.md', 'w') as f:
