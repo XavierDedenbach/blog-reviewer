@@ -1,103 +1,252 @@
 {
-  "pr_title": "PR-002: Database Models and Core Operations",
-  "description": "Implement MongoDB document models and basic CRUD operations for the Blog Reviewer system. This PR establishes the core data layer with proper validation, indexing, and database connection management.\n\n**Size**: ~350 lines | **Duration**: 2-3 days  \n**Agent**: mongodb-manager with strict TDD approach",
+  "pr_title": "Feature/pr 005 review workflow orchestrator",
+  "description": "",
   "claude_command": {
     "command": "implement",
-    "details": "model name corrected to claude-sonnet-4-20250514 - please retry"
+    "details": "implement the orchestration system with focus on:\r\n1. Robust workflow state management\r\n2. Reliable task scheduling and queuing\r\n3. Comprehensive error handling and recovery\r\n4. Performance monitoring and optimization",
+    "urgency": "normal",
+    "scope": "comprehensive"
   },
   "requirements": [
     {
-      "type": "requirement",
-      "requirement": "**Article Model**: Complete document model with validation",
-      "priority": "normal",
-      "source": "body"
-    },
-    {
-      "type": "requirement",
-      "requirement": "**Author Model**: Author profiles with style analysis",
-      "priority": "normal",
-      "source": "body"
-    },
-    {
-      "type": "requirement",
-      "requirement": "**Review Model**: Review workflow and scoring",
-      "priority": "normal",
-      "source": "body"
-    },
-    {
-      "type": "requirement",
-      "requirement": "Database connection management and configuration",
-      "priority": "normal",
-      "source": "body"
-    },
-    {
-      "type": "requirement",
-      "requirement": "Basic CRUD operations for each model",
-      "priority": "normal",
-      "source": "body"
-    },
-    {
-      "type": "requirement",
-      "requirement": "Performance indexes based on database_schema.md",
-      "priority": "normal",
-      "source": "body"
-    },
-    {
-      "type": "requirement",
-      "requirement": "Data validation schemas with proper error handling",
-      "priority": "normal",
+      "type": "test",
+      "requirement": "Test workflow state transitions",
+      "priority": "high",
+      "complexity": "medium",
       "source": "body"
     },
     {
       "type": "test",
-      "requirement": "Unit tests for all model operations",
+      "requirement": "Test task scheduling accuracy",
       "priority": "high",
+      "complexity": "medium",
       "source": "body"
     },
     {
       "type": "test",
-      "requirement": "Integration tests with real MongoDB instance",
+      "requirement": "Test priority-based processing",
       "priority": "high",
+      "complexity": "medium",
       "source": "body"
     },
     {
       "type": "test",
-      "requirement": "Data validation and constraint enforcement tests",
-      "priority": "high",
+      "requirement": "Test error handling and recovery",
+      "priority": "critical",
+      "complexity": "medium",
       "source": "body"
     },
     {
       "type": "test",
-      "requirement": "Index usage and query performance tests",
+      "requirement": "Test workflow retry mechanisms",
       "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Test performance under load",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "100% test passing rate",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "80% test coverage",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Create workflow orchestration engine",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Implement review state management",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Add task scheduling and queuing",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Create workflow configuration system",
+      "priority": "high",
+      "complexity": "high",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Implement priority-based processing",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Add workflow monitoring and logging",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Create error handling and recovery",
+      "priority": "critical",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Implement workflow retry mechanisms",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Add performance metrics collection",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "task",
+      "requirement": "Create workflow visualization tools",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Test workflow state transitions",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Test task scheduling accuracy",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Test priority-based processing",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Test error handling and recovery",
+      "priority": "critical",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Test workflow retry mechanisms",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Test performance under load",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Verify workflow completes correctly",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Verify state management is consistent",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Verify monitoring provides useful data",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Tests pass locally",
+      "priority": "high",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "test",
+      "requirement": "Coverage requirements met per testing strategy",
+      "priority": "high",
+      "complexity": "medium",
       "source": "body"
     },
     {
       "type": "requirement",
-      "requirement": "Error handling for database failures",
+      "requirement": "Code follows TDD approach",
       "priority": "normal",
+      "complexity": "medium",
+      "source": "body"
+    },
+    {
+      "type": "documentation",
+      "requirement": "Documentation updated",
+      "priority": "normal",
+      "complexity": "low",
       "source": "body"
     },
     {
       "type": "requirement",
-      "requirement": "CRUD operations verification",
+      "requirement": "Claude Code agents used appropriately for complex tasks",
       "priority": "normal",
+      "complexity": "high",
       "source": "body"
     },
     {
-      "type": "test",
-      "requirement": "Database operations atomicity tests",
-      "priority": "high",
+      "type": "requirement",
+      "requirement": "Ready for review",
+      "priority": "normal",
+      "complexity": "medium",
       "source": "body"
     }
   ],
   "summary": {
-    "total": 14,
-    "tasks": 0,
-    "tests": 5,
-    "other": 9
+    "total": 33,
+    "tasks": 10,
+    "tests": 19,
+    "other": 3
   },
   "test_required": true,
-  "documentation_required": false,
+  "documentation_required": true,
   "priority": "normal"
 }
