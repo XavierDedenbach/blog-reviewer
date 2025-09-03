@@ -309,7 +309,7 @@ Think through this systematically and deliver a complete, working solution that 
         
         data = {
             'model': 'claude-sonnet-4-20250514',
-            'max_tokens': 12000,  # Optimized for comprehensive responses while avoiding rate limits
+            'max_tokens': 25000,  # High token limit to cover worst case scenarios and complex projects
             'messages': [
                 {
                     'role': 'user',
