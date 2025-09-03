@@ -281,7 +281,7 @@ Think through this systematically and deliver a complete, working solution that 
         # Validate response format and refine if needed
         if not self._validate_response_format(initial_response):
             print("⚠️ Response format incomplete, requesting refinement...")
-            refinement_prompt = self._create_refinement_prompt(requirements, initial_response)
+            refinement_prompt = self._create_refinement_prompt(initial_response, requirements)
             refined_response = self._make_claude_request_with_retry(refinement_prompt)
             if refined_response and "Error" not in refined_response:
                 return refined_response
@@ -375,6 +375,16 @@ Think through this systematically and deliver a complete, working solution that 
     
     def _create_refinement_prompt(self, incomplete_response: str, requirements: Dict[str, Any]) -> str:
         """Create a prompt to refine incomplete responses."""
+        # Safely extract requirements with fallbacks
+        pr_title = requirements.get('pr_title', 'Unknown PR')
+        requirements_list = requirements.get('requirements', [])
+        
+        # Build requirements text safely
+        if isinstance(requirements_list, list) and len(requirements_list) > 0:
+            req_text = chr(10).join([f"- {req.get('requirement', 'Unknown requirement')}" for req in requirements_list])
+        else:
+            req_text = "- No specific requirements found"
+        
         return f"""Your previous response was incomplete. Please provide a COMPLETE response with ALL required sections:
 
 ## MISSING SECTIONS
@@ -389,8 +399,8 @@ Your response must include these exact sections:
 - SELF_VALIDATION
 
 ## ORIGINAL REQUIREMENTS
-{requirements['pr_title']}
-{chr(10).join([f"- {req['requirement']}" for req in requirements['requirements']])}
+{pr_title}
+{req_text}
 
 ## YOUR INCOMPLETE RESPONSE
 {incomplete_response[:1000]}...
@@ -450,6 +460,15 @@ def main():
     try:
         with open(args.requirements_file, 'r') as f:
             requirements = json.load(f)
+        
+        # Validate requirements structure
+        print(f"📋 Requirements loaded successfully")
+        print(f"   - Type: {type(requirements)}")
+        print(f"   - Keys: {list(requirements.keys()) if isinstance(requirements, dict) else 'Not a dict'}")
+        if isinstance(requirements, dict):
+            print(f"   - PR Title: {requirements.get('pr_title', 'Missing')}")
+            print(f"   - Requirements count: {len(requirements.get('requirements', []))}")
+        
     except FileNotFoundError:
         print(f"Error: Requirements file {args.requirements_file} not found")
         return 1
