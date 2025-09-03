@@ -274,28 +274,63 @@ Remember: You are an independent AI agent.
 Think through this systematically and deliver a complete, working solution that a senior developer would be proud of.
 """
 
-        # Use retry logic for API calls
-        print("📡 Making API request to Claude with retry logic...")
-        initial_response = self._make_claude_request_with_retry(prompt)
+        # Check for existing progress
+        progress = self._load_progress()
+        if progress:
+            print(f"📂 Found existing progress from {time.ctime(progress['timestamp'])}")
+            print(f"   - Attempt: {progress['attempt']}")
+            print(f"   - Status: {progress['status']}")
+            
+            # Continue from where we left off
+            print("🔄 Continuing from saved progress...")
+            continuation_prompt = self._create_continuation_prompt(progress['response'], requirements)
+            continued_response = self._make_claude_request_with_retry(continuation_prompt, save_progress=True)
+            
+            if continued_response is None:
+                print("❌ Continuation failed, progress saved for manual resume")
+                return None
+            
+            # Combine responses
+            full_response = progress['response'] + "\n\n" + continued_response
+            print(f"✅ Successfully combined responses")
+            return full_response
+        
+        # Use retry logic for initial API calls
+        print("📡 Making initial API request to Claude with retry logic...")
+        initial_response = self._make_claude_request_with_retry(prompt, save_progress=True)
         
         # Check if API call failed
         if initial_response is None:
             print("❌ Claude API call failed after all retry attempts")
+            print("💾 Progress saved for manual resume")
             return None
         
-        # Validate response format and refine if needed
+        # Validate response format and continue if incomplete
         if not self._validate_response_format(initial_response):
-            print("⚠️ Response format incomplete, requesting refinement...")
-            refinement_prompt = self._create_refinement_prompt(initial_response, requirements)
-            refined_response = self._make_claude_request_with_retry(refinement_prompt)
+            print("⚠️ Response format incomplete, continuing in chunks...")
             
-            # Check if refinement call failed
-            if refined_response is None:
-                print("❌ Claude API refinement call failed after all retry attempts")
+            # Save current progress
+            self._save_progress(initial_response, requirements, attempt=1)
+            
+            # Continue with continuation prompt
+            continuation_prompt = self._create_continuation_prompt(initial_response, requirements)
+            continued_response = self._make_claude_request_with_retry(continuation_prompt, save_progress=True)
+            
+            if continued_response is None:
+                print("❌ Continuation failed, progress saved for manual resume")
                 return None
             
-            if "Error" not in refined_response:
-                return refined_response
+            # Combine responses
+            full_response = initial_response + "\n\n" + continued_response
+            
+            # Check if we need more chunks
+            if not self._validate_response_format(full_response):
+                print("⚠️ Still incomplete, saving progress for manual resume...")
+                self._save_progress(full_response, requirements, attempt=2)
+                return full_response  # Return what we have so far
+            
+            print(f"✅ Successfully completed response in chunks")
+            return full_response
         
         return initial_response
     
@@ -309,11 +344,11 @@ Think through this systematically and deliver a complete, working solution that 
         
         data = {
             'model': 'claude-sonnet-4-20250514',
-            'max_tokens': 25000,  # High token limit to cover worst case scenarios and complex projects
+            'max_tokens': 8000,  # Stay within 8K output tokens/minute limit
             'messages': [
                 {
                     'role': 'user',
-                    'content': prompt
+                    'content': prompt  # Full prompt allowed (within 30K input tokens/minute)
                 }
             ]
         }
@@ -425,6 +460,85 @@ Think through this systematically and deliver a complete, working solution that 
         
         return None  # Return None to indicate failure
     
+    def _save_progress(self, response: str, requirements: Dict[str, Any], attempt: int = 1) -> None:
+        """Save partial response progress for resuming later."""
+        progress = {
+            'timestamp': time.time(),
+            'pr_title': requirements.get('pr_title', 'Unknown'),
+            'response': response,
+            'attempt': attempt,
+            'status': 'partial'
+        }
+        
+        with open('claude_progress.json', 'w') as f:
+            json.dump(progress, f, indent=2)
+        
+        print(f"💾 Progress saved to claude_progress.json")
+    
+    def _load_progress(self) -> Optional[Dict[str, Any]]:
+        """Load saved progress if available."""
+        if 'claude_progress.json' in os.listdir('.'):
+            try:
+                with open('claude_progress.json', 'r') as f:
+                    progress = json.load(f)
+                print(f"📂 Loaded progress from claude_progress.json")
+                return progress
+            except Exception as e:
+                print(f"⚠️ Could not load progress: {e}")
+        return None
+    
+    def _create_continuation_prompt(self, partial_response: str, requirements: Dict[str, Any]) -> str:
+        """Create a prompt to continue from where we left off."""
+        return f"""Please continue your response from where you left off. 
+
+## ORIGINAL REQUIREMENTS
+{requirements.get('pr_title', 'Unknown PR')}
+
+## YOUR PARTIAL RESPONSE (CONTINUE FROM HERE)
+{partial_response[-2000:]}...
+
+## INSTRUCTIONS
+- Continue exactly where you left off
+- Complete any incomplete sections
+- Maintain the same format and style
+- Focus on completing the remaining requirements
+- Do not repeat what you've already written
+
+Please continue with the next section or complete the current one."""
+    
+    def resume_from_progress(self, requirements: Dict[str, Any]) -> str:
+        """Resume generation from saved progress."""
+        progress = self._load_progress()
+        if not progress:
+            print("❌ No saved progress found")
+            return None
+        
+        print(f"🔄 Resuming from progress saved at {time.ctime(progress['timestamp'])}")
+        
+        # Continue with continuation prompt
+        continuation_prompt = self._create_continuation_prompt(progress['response'], requirements)
+        continued_response = self._make_claude_request_with_retry(continuation_prompt, save_progress=True)
+        
+        if continued_response is None:
+            print("❌ Continuation failed, progress updated for next attempt")
+            return None
+        
+        # Combine responses
+        full_response = progress['response'] + "\n\n" + continued_response
+        
+        # Check if complete
+        if self._validate_response_format(full_response):
+            print("✅ Successfully completed response from progress")
+            # Clean up progress file
+            if 'claude_progress.json' in os.listdir('.'):
+                os.remove('claude_progress.json')
+                print("🧹 Progress file cleaned up")
+            return full_response
+        else:
+            print("⚠️ Still incomplete, progress updated for next attempt")
+            self._save_progress(full_response, requirements, progress['attempt'] + 1)
+            return full_response
+    
     def _validate_response_format(self, response: str) -> bool:
         """Validate that response has required sections."""
         required_sections = [
@@ -509,6 +623,7 @@ def main():
     parser = argparse.ArgumentParser(description='Generate code using Claude API')
     parser.add_argument('--pr-number', required=True, help='PR number')
     parser.add_argument('--requirements-file', required=True, help='Requirements JSON file')
+    parser.add_argument('--resume', action='store_true', help='Resume from saved progress')
     
     args = parser.parse_args()
     
@@ -551,12 +666,19 @@ def main():
     print(f"Generating code for PR #{args.pr_number}...")
     print(f"Requirements: {len(requirements['requirements'])} items")
     
-    # Get Claude's response
-    claude_response = generator.generate_code_with_claude(requirements)
+    # Check if we should resume from progress
+    if args.resume:
+        print("🔄 Resuming from saved progress...")
+        claude_response = generator.resume_from_progress(requirements)
+    else:
+        # Get Claude's response
+        claude_response = generator.generate_code_with_claude(requirements)
     
     # Check if Claude API call failed
     if claude_response is None:
         print("❌ ERROR: Claude API call failed completely")
+        print("💾 Progress has been saved to claude_progress.json")
+        print("🔄 To resume later, run: python .github/scripts/claude_code_generator.py --resume --pr-number X --requirements-file Y")
         print("The workflow should fail to prevent false positive commits.")
         return 1
     
