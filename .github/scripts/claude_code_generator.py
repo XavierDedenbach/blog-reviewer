@@ -278,18 +278,29 @@ Think through this systematically and deliver a complete, working solution that 
         print("📡 Making API request to Claude with retry logic...")
         initial_response = self._make_claude_request_with_retry(prompt)
         
+        # Check if API call failed
+        if initial_response is None:
+            print("❌ Claude API call failed after all retry attempts")
+            return None
+        
         # Validate response format and refine if needed
         if not self._validate_response_format(initial_response):
             print("⚠️ Response format incomplete, requesting refinement...")
             refinement_prompt = self._create_refinement_prompt(initial_response, requirements)
             refined_response = self._make_claude_request_with_retry(refinement_prompt)
-            if refined_response and "Error" not in refined_response:
+            
+            # Check if refinement call failed
+            if refined_response is None:
+                print("❌ Claude API refinement call failed after all retry attempts")
+                return None
+            
+            if "Error" not in refined_response:
                 return refined_response
         
         return initial_response
     
     def _make_claude_request_with_retry(self, prompt: str, max_retries: int = 3) -> str:
-        """Make a request to Claude API with retry logic and exponential backoff."""
+        """Make a request to Claude API with retry logic and intelligent error handling."""
         headers = {
             'Content-Type': 'application/json',
             'x-api-key': self.api_key,
@@ -298,7 +309,7 @@ Think through this systematically and deliver a complete, working solution that 
         
         data = {
             'model': 'claude-sonnet-4-20250514',
-            'max_tokens': 16000,
+            'max_tokens': 12000,  # Optimized for comprehensive responses while avoiding rate limits
             'messages': [
                 {
                     'role': 'user',
@@ -312,6 +323,7 @@ Think through this systematically and deliver a complete, working solution that 
                 print(f"Making API request to: {self.anthropic_url} (attempt {attempt + 1}/{max_retries})")
                 print(f"Using model: {data['model']}")
                 print(f"API version: {headers['anthropic-version']}")
+                print(f"Max tokens: {data['max_tokens']}")
                 
                 # Exponential backoff: 300s, 600s, 900s
                 timeout = 300 + (attempt * 300)
@@ -322,12 +334,69 @@ Think through this systematically and deliver a complete, working solution that 
                 print(f"Response status: {response.status_code}")
                 if response.status_code != 200:
                     print(f"Response headers: {response.headers}")
-                    print(f"Response text: {response.text}")
+                    print(f"Response text: {response.text[:500]}...")  # Truncate long responses
+                
+                # Handle specific HTTP status codes
+                if response.status_code == 429:  # Rate limit
+                    print(f"⚠️ Rate limit hit on attempt {attempt + 1}")
+                    
+                    # Show current rate limit status
+                    if 'anthropic-ratelimit-output-tokens-remaining' in response.headers:
+                        remaining = response.headers['anthropic-ratelimit-output-tokens-remaining']
+                        limit = response.headers.get('anthropic-ratelimit-output-tokens-limit', 'unknown')
+                        reset = response.headers.get('anthropic-ratelimit-output-tokens-reset', 'unknown')
+                        print(f"   - Output tokens remaining: {remaining}/{limit}")
+                        print(f"   - Reset time: {reset}")
+                    
+                    if 'retry-after' in response.headers:
+                        retry_after = int(response.headers['retry-after'])
+                        print(f"   - API suggests waiting {retry_after} seconds")
+                        if attempt < max_retries - 1:
+                            # For rate limits, always respect the API's retry-after suggestion
+                            wait_time = retry_after + 5  # Add 5 seconds buffer
+                            print(f"   - Waiting {wait_time} seconds (API suggestion + buffer) before retry...")
+                            import time
+                            time.sleep(wait_time)
+                            continue
+                        else:
+                            print(f"❌ All retry attempts failed due to rate limiting")
+                            print(f"   - Last API suggestion was to wait {retry_after} seconds")
+                            return None
+                    else:
+                        if attempt < max_retries - 1:
+                            wait_time = (2 ** attempt) * 30  # Longer wait for rate limits
+                            print(f"   - Waiting {wait_time} seconds before retry...")
+                            import time
+                            time.sleep(wait_time)
+                            continue
+                        else:
+                            print(f"❌ All retry attempts failed due to rate limiting")
+                            return None
+                
+                elif response.status_code == 503:  # Service unavailable
+                    print(f"⚠️ Service unavailable on attempt {attempt + 1}")
+                    if attempt < max_retries - 1:
+                        wait_time = (2 ** attempt) * 15  # Moderate wait for server issues
+                        print(f"Waiting {wait_time} seconds before retry...")
+                        import time
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(f"❌ All retry attempts failed due to service unavailability")
+                        return None
                 
                 response.raise_for_status()
                 
                 result = response.json()
                 initial_response = result['content'][0]['text']
+                
+                # Log token usage if available
+                if 'usage' in result:
+                    usage = result['usage']
+                    input_tokens = usage.get('input_tokens', 'unknown')
+                    output_tokens = usage.get('output_tokens', 'unknown')
+                    print(f"   - Input tokens used: {input_tokens}")
+                    print(f"   - Output tokens used: {output_tokens}")
                 
                 print(f"✅ API request successful on attempt {attempt + 1}")
                 return initial_response
@@ -335,26 +404,26 @@ Think through this systematically and deliver a complete, working solution that 
             except requests.exceptions.Timeout as e:
                 print(f"⚠️ Timeout error on attempt {attempt + 1}: {e}")
                 if attempt < max_retries - 1:
-                    wait_time = (2 ** attempt) * 5  # 5s, 10s, 20s
+                    wait_time = (2 ** attempt) * 10  # Longer wait for timeouts
                     print(f"Waiting {wait_time} seconds before retry...")
                     import time
                     time.sleep(wait_time)
                 else:
                     print(f"❌ All retry attempts failed due to timeout")
-                    return f"Error generating code: {e} after {max_retries} attempts"
+                    return None
                     
             except requests.exceptions.RequestException as e:
                 print(f"❌ Request error on attempt {attempt + 1}: {e}")
                 if attempt < max_retries - 1:
-                    wait_time = (2 ** attempt) * 5  # 5s, 10s, 20s
+                    wait_time = (2 ** attempt) * 10
                     print(f"Waiting {wait_time} seconds before retry...")
                     import time
                     time.sleep(wait_time)
                 else:
                     print(f"❌ All retry attempts failed")
-                    return f"Error generating code: {e} after {max_retries} attempts"
+                    return None
         
-        return "Error: Failed to get response from Claude API after all retries"
+        return None  # Return None to indicate failure
     
     def _validate_response_format(self, response: str) -> bool:
         """Validate that response has required sections."""
@@ -484,6 +553,12 @@ def main():
     
     # Get Claude's response
     claude_response = generator.generate_code_with_claude(requirements)
+    
+    # Check if Claude API call failed
+    if claude_response is None:
+        print("❌ ERROR: Claude API call failed completely")
+        print("The workflow should fail to prevent false positive commits.")
+        return 1
     
     # Parse and write files
     created_files = generator.parse_and_write_files(claude_response)
