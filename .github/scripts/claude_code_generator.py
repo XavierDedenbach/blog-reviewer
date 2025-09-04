@@ -844,6 +844,17 @@ Focus on implementing the missing requirements and improving existing code if ne
             print("📋 Running tests...")
             try:
                 import subprocess
+                
+                # Ensure pytest is available
+                try:
+                    import pytest
+                    print("✅ pytest is available")
+                except ImportError:
+                    print("📦 Installing pytest...")
+                    subprocess.run(['pip', 'install', 'pytest'], 
+                                  capture_output=True, text=True, timeout=60)
+                    print("✅ pytest installed")
+                
                 result = subprocess.run(['python', '-m', 'pytest', '-v', '--tb=short'], 
                                       capture_output=True, text=True, timeout=300)
                 
@@ -858,6 +869,19 @@ Focus on implementing the missing requirements and improving existing code if ne
                     print(result.stdout[-2000:] if result.stdout else "No stdout")
                     print("\nSTDERR:")
                     print(result.stderr[-1000:] if result.stderr else "No stderr")
+                    
+                    # Show test failure summary
+                    if result.stdout:
+                        print(f"\n📊 Test Summary: {len(result.stdout.split('FAILED')) - 1} tests failed")
+                        # Extract specific test failures
+                        failed_tests = []
+                        for line in result.stdout.split('\n'):
+                            if 'FAILED' in line or 'ERROR' in line:
+                                failed_tests.append(line.strip())
+                        if failed_tests:
+                            print("🔍 Specific Test Failures:")
+                            for test in failed_tests[:5]:  # Show first 5 failures
+                                print(f"  - {test}")
                     
                     if iteration < max_iterations:
                         print("🔄 Tests failed, triggering next iteration...")
