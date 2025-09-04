@@ -38,7 +38,7 @@ class TaskStatus(str, Enum):
 class TaskPriority(str, Enum):
     """Task priority levels."""
     LOW = "low"
-    NORMAL = "normal"
+    MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
@@ -49,6 +49,10 @@ class RetryPolicy(BaseModel):
     delay_seconds: float = Field(default=1.0, ge=0.1, le=300.0)
     backoff_multiplier: float = Field(default=2.0, ge=1.0, le=10.0)
     max_delay_seconds: float = Field(default=300.0, ge=1.0, le=3600.0)
+    # Additional fields used by retry handler
+    base_delay: float = Field(default=1.0, ge=0.1, le=300.0)
+    strategy: str = Field(default="exponential_backoff")
+    retryable_errors: List[str] = Field(default_factory=lambda: ["TimeoutError", "ConnectionError", "TemporaryError"])
 
 
 class TaskDefinition(BaseModel):
@@ -56,7 +60,7 @@ class TaskDefinition(BaseModel):
     id: TaskId = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: Optional[str] = None
-    priority: TaskPriority = TaskPriority.NORMAL
+    priority: TaskPriority = TaskPriority.MEDIUM
     timeout_seconds: int = Field(default=300, ge=1, le=3600)
     retry_policy: RetryPolicy = Field(default_factory=RetryPolicy)
     dependencies: List[TaskId] = Field(default_factory=list)
@@ -89,7 +93,7 @@ class WorkflowConfig(BaseModel):
     max_concurrent_tasks: int = Field(default=5, ge=1, le=50)
     timeout_minutes: int = Field(default=60, ge=1, le=1440)
     retry_policy: RetryPolicy = Field(default_factory=RetryPolicy)
-    priority: TaskPriority = TaskPriority.NORMAL
+    priority: TaskPriority = TaskPriority.MEDIUM
     enabled: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -122,3 +126,28 @@ class WorkflowMetrics(BaseModel):
         if self.total_tasks == 0:
             return 0.0
         return (self.failed_tasks / self.total_tasks) * 100.0
+
+
+class TaskItem(BaseModel):
+    """Represents a queued task item."""
+    task_id: TaskId = Field(default_factory=lambda: str(uuid.uuid4()))
+    workflow_id: WorkflowId
+    task_definition: TaskDefinition
+    status: TaskStatus = TaskStatus.PENDING
+    priority: TaskPriority = TaskPriority.MEDIUM
+    retry_count: int = Field(default=0, ge=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    context: Dict[str, Any] = Field(default_factory=dict)
+
+
+class QueuedTask(BaseModel):
+    """Represents a task in the queue."""
+    task_id: TaskId
+    workflow_id: WorkflowId
+    task_definition: TaskDefinition
+    priority: TaskPriority = TaskPriority.MEDIUM
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    dependencies: List[TaskId] = Field(default_factory=list)
+

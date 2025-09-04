@@ -74,4 +74,51 @@ class TestWorkflowOrchestrator:
     
     @pytest.mark.asyncio
     async def test_start_workflow(self, orchestrator, sample_workflow_config, mock_dependencies):
-        """Test starting a new
+        """Test starting a new workflow."""
+        review_id = str(ObjectId())
+
+        workflow_id = await orchestrator.start_workflow(sample_workflow_config, review_id)
+
+        assert workflow_id is not None
+        # Verify that save_workflow_state was called (not create_workflow_state)
+        assert mock_dependencies["state_manager"].save_workflow_state.called
+
+    @pytest.mark.asyncio
+    async def test_get_workflow_status(self, orchestrator, mock_dependencies):
+        """Test getting workflow status."""
+        workflow_id = str(ObjectId())
+        mock_workflow = AsyncMock()
+        mock_workflow.status = WorkflowStatus.RUNNING
+
+        mock_dependencies["state_manager"].get_workflow_state.return_value = mock_workflow
+
+        status = await orchestrator.get_workflow_status(workflow_id)
+
+        assert status == WorkflowStatus.RUNNING
+        mock_dependencies["state_manager"].get_workflow_state.assert_called_once_with(workflow_id)
+
+    @pytest.mark.asyncio
+    async def test_cancel_workflow(self, orchestrator, mock_dependencies):
+        """Test canceling a workflow."""
+        workflow_id = str(ObjectId())
+        mock_workflow = AsyncMock()
+        mock_workflow.status = WorkflowStatus.RUNNING
+
+        mock_dependencies["state_manager"].get_workflow_state.return_value = mock_workflow
+
+        result = await orchestrator.cancel_workflow(workflow_id)
+
+        assert result is True
+        assert mock_workflow.status == WorkflowStatus.CANCELLED
+        mock_dependencies["state_manager"].save_workflow_state.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_cancel_nonexistent_workflow(self, orchestrator, mock_dependencies):
+        """Test canceling a nonexistent workflow."""
+        workflow_id = str(ObjectId())
+
+        mock_dependencies["state_manager"].get_workflow_state.return_value = None
+
+        result = await orchestrator.cancel_workflow(workflow_id)
+
+        assert result is False

@@ -55,7 +55,7 @@ class RetryHandler:
             last_error=None,
             start_time=datetime.utcnow(),
             total_delay=0.0,
-            strategy=RetryStrategy(retry_policy.strategy)
+            strategy=RetryStrategy(retry_policy.strategy.upper())
         )
         
         while context.attempt < context.max_attempts:
@@ -123,7 +123,7 @@ class RetryHandler:
     
     def _calculate_delay(self, context: RetryContext, retry_policy: RetryPolicy) -> float:
         """Calculate delay before next retry attempt."""
-        base_delay = retry_policy.base_delay
+        base_delay = retry_policy.delay_seconds
         
         if context.strategy == RetryStrategy.FIXED_DELAY:
             return base_delay

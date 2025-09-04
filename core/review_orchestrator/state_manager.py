@@ -15,7 +15,7 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
-class StateManager:
+class WorkflowStateManager:
     """Manages workflow state transitions and persistence."""
     
     def __init__(self):
@@ -245,3 +245,7 @@ class StateManager:
         }
         
         return to_status in valid_transitions.get(from_status, [])
+
+
+# Alias for backward compatibility
+StateManager = WorkflowStateManager

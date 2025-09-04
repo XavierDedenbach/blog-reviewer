@@ -14,6 +14,8 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+from .models import TaskItem, QueuedTask
+
 
 class TaskPriority(Enum):
     """Task priority levels."""
@@ -86,6 +88,69 @@ class TaskQueue:
             heapq.heappush(self._queue, task)
             logger.info(f"Added task {task.task_id} to queue")
             return task.task_id
+
+    async def enqueue_task(self, task_def, workflow_id: str, review_id: str) -> str:
+        """Enqueue a task for a workflow (alias for add_task)."""
+        from .models import TaskDefinition as ModelTaskDefinition
+
+        # Convert to TaskDefinition if needed
+        if isinstance(task_def, ModelTaskDefinition):
+            task = TaskDefinition(
+                name=task_def.name,
+                priority=TaskPriority(task_def.priority.value.lower()),
+                func=lambda: None,  # Placeholder
+                args=[task_def.parameters],
+                kwargs={}
+            )
+        else:
+            task = task_def
+
+        task.workflow_id = workflow_id
+        task.review_id = review_id
+        return await self.add_task(task)
+
+    async def dequeue_task(self) -> Optional[Dict[str, Any]]:
+        """Dequeue the next task to execute."""
+        task = await self._get_next_task()
+        if task:
+            return {
+                'task_definition': task,
+                'workflow_id': getattr(task, 'workflow_id', None),
+                'review_id': getattr(task, 'review_id', None)
+            }
+        return None
+
+    async def cancel_workflow_tasks(self, workflow_id: str) -> int:
+        """Cancel all tasks for a workflow."""
+        async with self._lock:
+            cancelled_count = 0
+            # Remove from queue
+            remaining_tasks = []
+            for task in self._queue:
+                if getattr(task, 'workflow_id', None) == workflow_id:
+                    cancelled_count += 1
+                else:
+                    remaining_tasks.append(task)
+            self._queue = remaining_tasks
+
+            # Cancel running tasks
+            tasks_to_cancel = []
+            for task_id, task in self._running_tasks.items():
+                if getattr(task, 'workflow_id', None) == workflow_id:
+                    tasks_to_cancel.append(task_id)
+
+            for task_id in tasks_to_cancel:
+                task = self._running_tasks[task_id]
+                task.cancel()
+                cancelled_count += 1
+
+            logger.info(f"Cancelled {cancelled_count} tasks for workflow {workflow_id}")
+            return cancelled_count
+
+    async def get_queue_size(self) -> int:
+        """Get the current queue size."""
+        async with self._lock:
+            return len(self._queue)
     
     async def schedule_task(
         self, 

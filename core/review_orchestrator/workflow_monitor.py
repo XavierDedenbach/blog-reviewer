@@ -371,5 +371,40 @@ class WorkflowMonitor:
             result = await self.metrics_collection.delete_many({
                 "start_time": {"$lt": cutoff_date}
             })
-            
-            #
+
+            deleted_count = result.deleted_count
+            self.logger.info(f"Cleaned up {deleted_count} old metrics records")
+
+            return deleted_count
+
+        except Exception as e:
+            self.logger.error(f"Error cleaning up old metrics: {e}")
+            return 0
+
+    async def _record_event(self, workflow_id: ObjectId, event_type: str,
+                           event_data: Dict[str, Any]) -> None:
+        """
+        Record workflow event for audit trail.
+
+        Args:
+            workflow_id: Workflow identifier
+            event_type: Type of event
+            event_data: Event-specific data
+        """
+        try:
+            event_doc = {
+                "workflow_id": workflow_id,
+                "event_type": event_type,
+                "event_data": event_data,
+                "timestamp": datetime.utcnow()
+            }
+
+            await self.events_collection.insert_one(event_doc)
+
+        except Exception as e:
+            self.logger.error(f"Error recording event: {e}")
+
+    def _invalidate_cache(self):
+        """Invalidate performance cache."""
+        self._performance_cache.clear()
+        self._cache_expiry = datetime.utcnow()
