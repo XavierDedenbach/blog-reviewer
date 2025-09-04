@@ -845,17 +845,10 @@ Focus on implementing the missing requirements and improving existing code if ne
             try:
                 import subprocess
                 
-                # Ensure pytest is available
-                try:
-                    import pytest
-                    print("✅ pytest is available")
-                except ImportError:
-                    print("📦 Installing pytest...")
-                    subprocess.run(['pip', 'install', 'pytest'], 
-                                  capture_output=True, text=True, timeout=60)
-                    print("✅ pytest installed")
+                # Use unittest (always available, no installation needed)
+                print("🧪 Using Python's built-in unittest framework")
                 
-                result = subprocess.run(['python', '-m', 'pytest', '-v', '--tb=short'], 
+                result = subprocess.run(['python', '-m', 'unittest', 'discover', '-v'], 
                                       capture_output=True, text=True, timeout=300)
                 
                 if result.returncode == 0:
@@ -870,14 +863,30 @@ Focus on implementing the missing requirements and improving existing code if ne
                     print("\nSTDERR:")
                     print(result.stderr[-1000:] if result.stderr else "No stderr")
                     
-                    # Show test failure summary
+                    # Show test failure summary (unittest format)
                     if result.stdout:
-                        print(f"\n📊 Test Summary: {len(result.stdout.split('FAILED')) - 1} tests failed")
+                        # Count tests run and failed
+                        lines = result.stdout.split('\n')
+                        tests_run = 0
+                        tests_failed = 0
+                        tests_errors = 0
+                        
+                        for line in lines:
+                            if 'test' in line.lower() and ('ok' in line.lower() or 'passed' in line.lower()):
+                                tests_run += 1
+                            elif 'fail' in line.lower():
+                                tests_failed += 1
+                            elif 'error' in line.lower():
+                                tests_errors += 1
+                        
+                        print(f"\n📊 Test Summary: {tests_run} tests run, {tests_failed} failed, {tests_errors} errors")
+                        
                         # Extract specific test failures
                         failed_tests = []
-                        for line in result.stdout.split('\n'):
-                            if 'FAILED' in line or 'ERROR' in line:
+                        for line in lines:
+                            if any(keyword in line.lower() for keyword in ['fail', 'error', 'exception']):
                                 failed_tests.append(line.strip())
+                        
                         if failed_tests:
                             print("🔍 Specific Test Failures:")
                             for test in failed_tests[:5]:  # Show first 5 failures

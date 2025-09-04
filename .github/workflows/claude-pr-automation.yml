@@ -51,7 +51,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install anthropic requests pyyaml pytest pytest-cov
+        pip install anthropic requests pyyaml
+        # unittest is built-in, no need to install pytest
     
     - name: Parse PR Requirements
       id: parse-requirements
@@ -103,8 +104,7 @@ jobs:
           echo "❌ Enhanced Agent failed"
           exit 1
         fi
-      env:
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    - name: Commit Generated Code
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "Claude Development Bot"
