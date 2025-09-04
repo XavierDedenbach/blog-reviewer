@@ -51,7 +51,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install anthropic requests pyyaml
+        pip install anthropic requests pyyaml pymongo aiohttp
         # unittest is built-in, no need to install pytest
     
     - name: Parse PR Requirements
