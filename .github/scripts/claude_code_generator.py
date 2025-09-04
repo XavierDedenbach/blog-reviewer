@@ -285,34 +285,26 @@ Remember: You are an independent AI agent.
 
 **THEN:**
 1. Write comprehensive tests first (TDD approach)
-2. Implement code that makes tests pass
-3. Validate against all requirements
-4. Ensure seamless integration
-5. Provide detailed explanations for every decision
+2. **CRITICAL: Implement the ACTUAL CODE that makes tests pass**
+3. **DO NOT just write tests - you MUST create implementation files**
+4. Validate against all requirements
+5. Ensure seamless integration
+6. Provide detailed explanations for every decision
+
+**IMPORTANT: You must generate BOTH test files AND implementation files.**
+**Tests alone are not enough - you need working code that passes those tests.**
 
 Think through this systematically and deliver a complete, working solution that a senior developer would be proud of.
 """
 
-        # Check for existing progress
-        progress = self._load_progress()
-        if progress:
-            print(f"📂 Found existing progress from {time.ctime(progress['timestamp'])}")
-            print(f"   - Attempt: {progress['attempt']}")
-            print(f"   - Status: {progress['status']}")
-            
-            # Continue from where we left off
-            print("🔄 Continuing from saved progress...")
-            continuation_prompt = self._create_continuation_prompt(progress['response'], requirements)
-            continued_response = self._make_claude_request_with_retry(continuation_prompt)
-            
-            if continued_response is None:
-                print("❌ Continuation failed, progress saved for manual resume")
-                return None
-            
-            # Combine responses
-            full_response = progress['response'] + "\n\n" + continued_response
-            print(f"✅ Successfully combined responses")
-            return full_response
+        # Always start fresh with full context for better results
+        print("🔄 Starting fresh with full project context...")
+        
+        # Clean up any old progress files to ensure fresh start
+        import os
+        if os.path.exists('claude_progress.json'):
+            os.remove('claude_progress.json')
+            print("🧹 Cleaned up old progress file")
         
         # Use retry logic for initial API calls
         print("📡 Making initial API request to Claude with retry logic...")
@@ -636,15 +628,27 @@ Please continue with the next section or complete the current one."""
         req_keywords = [word for word in req_lower.split() if len(word) > 3]
         keywords_found = sum(1 for keyword in req_keywords if keyword in resp_lower)
         
-        # Check if implementation code is present
+        # Check if implementation code is present (not just tests)
         has_implementation = any(indicator in resp_lower for indicator in implementation_indicators)
+        
+        # CRITICAL: Check for actual implementation files, not just tests
+        has_impl_files = (
+            'implementation_files' in resp_lower or
+            'models.py' in resp_lower or
+            'state_manager.py' in resp_lower or
+            'task_queue.py' in resp_lower or
+            'orchestrator.py' in resp_lower
+        )
         
         # Requirement is implemented if:
         # 1. Most keywords are found AND
-        # 2. Implementation code is present
+        # 2. Implementation code is present AND
+        # 3. We have actual implementation files (not just tests)
         keyword_threshold = max(1, len(req_keywords) * 0.6)  # 60% of keywords
         
-        return keywords_found >= keyword_threshold and has_implementation
+        return (keywords_found >= keyword_threshold and 
+                has_implementation and 
+                has_impl_files)
     
     def _create_development_log(self, response: str, requirements: Dict[str, Any], validation_result: Dict[str, Any]) -> str:
         """Create a development log tracking all changes and completion status."""
@@ -722,7 +726,7 @@ Please continue with the next section or complete the current one."""
         """Run TDD iterations: tests → fail → fix → tests → pass."""
         print("🔄 Starting TDD Iteration Process...")
         
-        max_iterations = 5
+        max_iterations = 10
         current_response = initial_response
         
         for iteration in range(1, max_iterations + 1):
@@ -747,13 +751,16 @@ Please continue with the next section or complete the current one."""
                 else:
                     print(f"❌ Tests failed on iteration {iteration}")
                     print("Test output:")
-                    print(result.stdout[-1000:])  # Last 1000 chars of output
+                    print("STDOUT:")
+                    print(result.stdout[-2000:] if result.stdout else "No stdout")
+                    print("\nSTDERR:")
+                    print(result.stderr[-1000:] if result.stderr else "No stderr")
                     
                     if iteration < max_iterations:
                         print("🔄 Tests failed, triggering next iteration...")
                         
                         # Create continuation prompt with test failures
-                        test_failures = result.stdout[-1000:] + "\n" + result.stderr[-500:]
+                        test_failures = f"STDOUT:\n{result.stdout[-2000:] if result.stdout else 'No stdout'}\n\nSTDERR:\n{result.stderr[-1000:] if result.stderr else 'No stderr'}"
                         continuation_prompt = self._create_tdd_continuation_prompt(current_response, requirements, test_failures, iteration)
                         
                         # Get Claude to fix the failing tests
@@ -789,14 +796,48 @@ Please continue with the next section or complete the current one."""
         """Create a prompt for Claude to fix failing tests in TDD iterations."""
         return f"""You are continuing TDD iteration {iteration}. The tests are failing and need to be fixed.
 
+## CRITICAL: YOU MUST GENERATE IMPLEMENTATION CODE
+
+The tests are failing because you haven't implemented the actual classes and functions. 
+You need to create the IMPLEMENTATION files, not just fix tests.
+
 ## ORIGINAL REQUIREMENTS
 {requirements.get('pr_title', 'Unknown PR')}
-
-## CURRENT IMPLEMENTATION
-{current_response[-2000:]}...
+{requirements.get('requirements', [])}
 
 ## TEST FAILURES (Fix These)
 {test_failures}
+
+## WHAT YOU MUST DO
+1. **ANALYZE** the test failures to understand what's missing
+2. **IMPLEMENT** the actual classes and functions that the tests are expecting
+3. **CREATE** implementation files (not just test files)
+4. **ENSURE** the implementation matches the test expectations
+
+## IMPLEMENTATION PRIORITY
+Focus on creating these core implementation files:
+- `review_orchestrator/__init__.py` - Main package
+- `review_orchestrator/models.py` - Data models
+- `review_orchestrator/state_manager.py` - State management
+- `review_orchestrator/task_queue.py` - Task queuing
+- `review_orchestrator/orchestrator.py` - Main orchestrator
+
+## OUTPUT FORMAT
+Provide ONLY the implementation code in this format:
+
+### IMPLEMENTATION_FILES
+
+#### `review_orchestrator/models.py`
+```python
+# Your implementation here
+```
+
+#### `review_orchestrator/state_manager.py`
+```python
+# Your implementation here
+```
+
+Continue with all required implementation files. DO NOT just fix tests - IMPLEMENT THE ACTUAL CODE.
 
 ## INSTRUCTIONS
 1. **ANALYZE** the test failures carefully
