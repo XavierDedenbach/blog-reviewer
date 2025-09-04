@@ -88,7 +88,7 @@ class ClaudeCodeGenerator:
                 try:
                     # Read first 2000 chars of each doc for better context (increased from 1500)
                     content = doc_path.read_text()[:2000]
-                    content_sections.append(f"### {doc_file}\n```\n{content}{'...' if len(doc_path.read_text()) > 2000 else ''}\n```")
+                    content_sections.append(f"### {doc_file}\n```\n{content}{"..." if len(doc_path.read_text()) > 2000 else ""}\n```")
                 except Exception as e:
                     content_sections.append(f"### {doc_file}\n*Could not read file: {e}*")
         
@@ -179,7 +179,10 @@ Documentation Required: {requirements['documentation_required']}
 
 ## TDD Iteration Context
 Current Iteration: {iteration}
-{f"Previous Test Failures:\n```\n{test_failures}\n```" if test_failures else "First iteration - writing initial tests and implementation"}
+{f"Previous Test Failures:" if test_failures else "First iteration - writing initial tests and implementation"}
+{f"```" if test_failures else ""}
+{f"{test_failures}" if test_failures else ""}
+{f"```" if test_failures else ""}
 
 ## YOUR APPROACH - THINK STEP BY STEP
 {f"**ITERATION {iteration} - FIXING FAILING TESTS**" if test_failures else "**ITERATION {iteration} - INITIAL IMPLEMENTATION**"}
@@ -193,7 +196,9 @@ Current Iteration: {iteration}
 
 {f"**SPECIAL INSTRUCTIONS FOR ITERATION {iteration}:**" if iteration > 1 else ""}
 {f"**FOCUS ON FIXING THESE TEST FAILURES:**" if test_failures else ""}
-{f"```\n{test_failures}\n```" if test_failures else ""}
+{f"```" if test_failures else ""}
+{f"{test_failures}" if test_failures else ""}
+{f"```" if test_failures else ""}
 {f"**DO NOT REPEAT WORK:** Build upon existing implementation, fix what's broken" if iteration > 1 else ""}
 
 ## THINKING PROCESS
@@ -683,14 +688,14 @@ Please continue with the next section or complete the current one."""
         if 'TEST_FILES' in response:
             test_start = response.find('TEST_FILES')
             test_end = response.find('###', test_start + 1) if '###' in response[test_start:] else len(response)
-            test_section = response[test_start:test_end]
+            files_section += f"### Test Files\n{test_section}\n\n"
             files_section += f"### Test Files\n{test_section}\n\n"
         
         # Look for IMPLEMENTATION_FILES section
         if 'IMPLEMENTATION_FILES' in response:
             impl_start = response.find('IMPLEMENTATION_FILES')
             impl_end = response.find('###', impl_start + 1) if '###' in response[impl_start:] else len(response)
-            impl_section = response[impl_start:impl_end]
+            files_section += f"### Implementation Files\n{impl_section}\n\n"
             files_section += f"### Implementation Files\n{impl_section}\n\n"
         
         return files_section if files_section else "No file sections found in response"
@@ -706,7 +711,7 @@ Please continue with the next section or complete the current one."""
             if section in response:
                 section_start = response.find(section)
                 section_end = response.find('###', section_start + 1) if '###' in response[section_start:] else len(response)
-                section_content = response[section_start:section_end]
+                summary += f"### {section}\n{section_content[:500]}...\n\n"
                 summary += f"### {section}\n{section_content[:500]}...\n\n"
         
         return summary if summary else "No implementation details found"
@@ -900,9 +905,9 @@ def main():
     
     # Save Claude's full response for debugging
     with open('claude_response.md', 'w') as f:
-        f.write(f"# Claude Response for PR #{args.pr_number}\n\n")
-        f.write(f"## Requirements\n```json\n{json.dumps(requirements, indent=2)}\n```\n\n")
-        f.write(f"## Claude Response\n{claude_response}\n")
+        f.write(f"# Claude Response for PR #{args.pr_number}\\n\\n")
+        f.write(f"## Requirements\\n```json\\n{json.dumps(requirements, indent=2)}\\n```\\n\\n")
+        f.write(f"## Claude Response\\n{claude_response}\\n")
     
     return 0
 
