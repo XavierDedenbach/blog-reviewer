@@ -108,81 +108,43 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_REPOSITORY: ${{ github.repository }}
     
-    - name: Run Tests and Handle TDD Iterations
+    - name: Install Test Dependencies
+      run: |
+        echo "📦 Installing test dependencies..."
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        pip list | grep pytest
+        echo "✅ Test dependencies installed"
+    
+    - name: Run Tests
       id: run-tests
       run: |
-        echo "🧪 Starting TDD Iteration Process..."
+        echo "🧪 Running tests..."
         
-        # Install pytest if not already installed
-        pip install pytest pytest-cov
-        
-        # Initialize iteration counter
-        iteration=1
-        max_iterations=5  # Prevent infinite loops
-        
-        while [ $iteration -le $max_iterations ]; do
-          echo "🔄 TDD Iteration $iteration/$max_iterations"
-          
-          # Check if we have tests to run
-          if [ -d "tests/" ] && [ "$(find tests/ -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then
-            echo "📋 Running tests..."
-            
-            # Run tests and capture exit code
-            if python -m pytest -v --tb=short; then
-              echo "✅ All tests passed on iteration $iteration!"
-              echo "tests-passed=true" >> $GITHUB_OUTPUT
-              echo "final-iteration=$iteration" >> $GITHUB_OUTPUT
-              break
-            else
-              echo "❌ Tests failed on iteration $iteration"
-              echo "tests-failed=true" >> $GITHUB_OUTPUT
-              echo "current-iteration=$iteration" >> $GITHUB_OUTPUT
-              
-              # Check if we should continue to next iteration
-              if [ $iteration -lt $max_iterations ]; then
-                echo "🔄 Tests failed, triggering next iteration..."
-                
-                # Check if we have implementation files
-                if [ -d "api/" ] || [ -d "core/" ] || [ -d "cli/" ] || [ -f "main.py" ]; then
-                  echo "📝 Implementation exists, running Claude to fix failing tests..."
-                  
-                  # Trigger next Claude iteration
-                  python .github/scripts/claude_code_generator.py \
-                    --pr-number="${{ steps.pr-info.outputs.pr-number }}" \
-                    --requirements-file="pr_requirements.json" \
-                    --iteration="$iteration" \
-                    --test-failures="$(python -m pytest --tb=no -q 2>&1 | head -10)"
-                  
-                  # Check if Claude made changes
-                  if git diff --quiet; then
-                    echo "⚠️ No changes made by Claude, stopping iterations"
-                    break
-                  fi
-                  
-                  echo "📝 Changes detected, continuing to next iteration..."
-                else
-                  echo "⚠️ No implementation files found, stopping iterations"
-                  break
-                fi
-              else
-                echo "⚠️ Maximum iterations reached ($max_iterations)"
-                break
-              fi
-            fi
-          else
-            echo "📝 No tests found, stopping iterations"
-            break
-          fi
-          
-          iteration=$((iteration + 1))
-        done
-        
-        echo "🏁 TDD Iteration Process Complete"
-        echo "Final iteration: $iteration"
-        echo "Tests passed: ${{ steps.run-tests.outputs.tests-passed }}"
+        # Check if we have tests to run
+        if [ -d "tests/" ] && [ "$(find tests/ -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then
+          echo "📋 Found test files, running pytest..."
+          python -m pytest -v --tb=short || echo "tests-failed=true" >> $GITHUB_OUTPUT
+        else
+          echo "📝 No test files found, skipping test execution"
+          echo "tests-skipped=true" >> $GITHUB_OUTPUT
+        fi
     
     - name: Commit Generated Code
       run: |
+        # Check if tests failed - don't commit if tests are broken
+        if [ "${{ steps.run-tests.outputs.tests-failed }}" = "true" ]; then
+          echo "❌ ERROR: Tests failed! Cannot commit broken code."
+          echo "The workflow should fail to prevent commits of broken code."
+          exit 1
+        fi
+        
+        # Check if tests were skipped
+        if [ "${{ steps.run-tests.outputs.tests-skipped }}" = "true" ]; then
+          echo "⚠️ WARNING: Tests were skipped - no test files found"
+          echo "This may indicate incomplete implementation"
+        fi
+        
         git config --local user.email "action@github.com"
         git config --local user.name "Claude Development Bot"
         
