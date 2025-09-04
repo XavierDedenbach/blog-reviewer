@@ -690,14 +690,14 @@ Please continue with the next section or complete the current one."""
         if 'TEST_FILES' in response:
             test_start = response.find('TEST_FILES')
             test_end = response.find('###', test_start + 1) if '###' in response[test_start:] else len(response)
-            files_section += f"### Test Files\n{test_section}\n\n"
+            test_section = response[test_start:test_end]
             files_section += f"### Test Files\n{test_section}\n\n"
         
         # Look for IMPLEMENTATION_FILES section
         if 'IMPLEMENTATION_FILES' in response:
             impl_start = response.find('IMPLEMENTATION_FILES')
             impl_end = response.find('###', impl_start + 1) if '###' in response[impl_start:] else len(response)
-            files_section += f"### Implementation Files\n{impl_section}\n\n"
+            impl_section = response[impl_start:impl_end]
             files_section += f"### Implementation Files\n{impl_section}\n\n"
         
         return files_section if files_section else "No file sections found in response"
@@ -713,7 +713,7 @@ Please continue with the next section or complete the current one."""
             if section in response:
                 section_start = response.find(section)
                 section_end = response.find('###', section_start + 1) if '###' in response[section_start:] else len(response)
-                summary += f"### {section}\n{section_content[:500]}...\n\n"
+                section_content = response[section_start:section_end]
                 summary += f"### {section}\n{section_content[:500]}...\n\n"
         
         return summary if summary else "No implementation details found"
