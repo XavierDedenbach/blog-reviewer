@@ -3,7 +3,7 @@
   "description": "",
   "claude_command": {
     "command": "implement",
-    "details": "try again",
+    "details": "implement the requirements",
     "urgency": "normal",
     "scope": "full"
   },
