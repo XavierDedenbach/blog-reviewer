@@ -97,7 +97,7 @@ class ClaudeCodeGenerator:
         
         return docs
     
-    def generate_code_with_claude(self, requirements: Dict[str, Any]) -> str:
+    def generate_code_with_claude(self, requirements: Dict[str, Any], iteration: int = 1, test_failures: str = '') -> str:
         """Generate code using Claude API with iterative refinement."""
         project_structure = self.read_project_structure()
         existing_tests = self.read_existing_tests()
@@ -177,13 +177,24 @@ Requirements to implement:
 Test Required: {requirements['test_required']}
 Documentation Required: {requirements['documentation_required']}
 
+## TDD Iteration Context
+Current Iteration: {iteration}
+{f"Previous Test Failures:\n```\n{test_failures}\n```" if test_failures else "First iteration - writing initial tests and implementation"}
+
 ## YOUR APPROACH - THINK STEP BY STEP
+{f"**ITERATION {iteration} - FIXING FAILING TESTS**" if test_failures else "**ITERATION {iteration} - INITIAL IMPLEMENTATION**"}
+
 1. **ANALYZE**: Break down requirements into specific, measurable tasks
 2. **PLAN**: Design solution architecture considering existing patterns  
 3. **DESIGN**: Create detailed implementation plan with dependencies
 4. **IMPLEMENT**: Write tests first, then code following TDD
 5. **VALIDATE**: Verify each requirement is met with specific checks
 6. **INTEGRATE**: Ensure seamless integration with existing codebase
+
+{f"**SPECIAL INSTRUCTIONS FOR ITERATION {iteration}:**" if iteration > 1 else ""}
+{f"**FOCUS ON FIXING THESE TEST FAILURES:**" if test_failures else ""}
+{f"```\n{test_failures}\n```" if test_failures else ""}
+{f"**DO NOT REPEAT WORK:** Build upon existing implementation, fix what's broken" if iteration > 1 else ""}
 
 ## THINKING PROCESS
 Before writing any code, you MUST:
@@ -768,6 +779,8 @@ def main():
     parser.add_argument('--pr-number', required=True, help='PR number')
     parser.add_argument('--requirements-file', required=True, help='Requirements JSON file')
     parser.add_argument('--resume', action='store_true', help='Resume from saved progress')
+    parser.add_argument('--iteration', type=int, default=1, help='Current TDD iteration number')
+    parser.add_argument('--test-failures', type=str, default='', help='Test failure output for iteration')
     
     args = parser.parse_args()
     
@@ -816,7 +829,10 @@ def main():
         claude_response = generator.resume_from_progress(requirements)
     else:
         # Get Claude's response
-        claude_response = generator.generate_code_with_claude(requirements)
+        print(f"🔄 Starting TDD Iteration {args.iteration}")
+        if args.test_failures:
+            print(f"📋 Previous test failures detected, fixing implementation...")
+        claude_response = generator.generate_code_with_claude(requirements, args.iteration, args.test_failures)
     
     # Check if Claude API call failed
     if claude_response is None:

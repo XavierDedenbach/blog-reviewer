@@ -51,7 +51,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install anthropic requests pyyaml
+        pip install anthropic requests pyyaml pytest pytest-cov
     
     - name: Parse PR Requirements
       id: parse-requirements
@@ -108,15 +108,78 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_REPOSITORY: ${{ github.repository }}
     
-    - name: Run Tests
+    - name: Run Tests and Handle TDD Iterations
       id: run-tests
       run: |
-        if [ -f "requirements-test.txt" ]; then
-          pip install -r requirements-test.txt
-        fi
-        if [ -f "pytest.ini" ] || [ -d "tests/" ]; then
-          python -m pytest -v --tb=short || echo "tests-failed=true" >> $GITHUB_OUTPUT
-        fi
+        echo "🧪 Starting TDD Iteration Process..."
+        
+        # Install pytest if not already installed
+        pip install pytest pytest-cov
+        
+        # Initialize iteration counter
+        iteration=1
+        max_iterations=5  # Prevent infinite loops
+        
+        while [ $iteration -le $max_iterations ]; do
+          echo "🔄 TDD Iteration $iteration/$max_iterations"
+          
+          # Check if we have tests to run
+          if [ -d "tests/" ] && [ "$(find tests/ -name '*.py' -not -name '__init__.py' | wc -l)" -gt 0 ]; then
+            echo "📋 Running tests..."
+            
+            # Run tests and capture exit code
+            if python -m pytest -v --tb=short; then
+              echo "✅ All tests passed on iteration $iteration!"
+              echo "tests-passed=true" >> $GITHUB_OUTPUT
+              echo "final-iteration=$iteration" >> $GITHUB_OUTPUT
+              break
+            else
+              echo "❌ Tests failed on iteration $iteration"
+              echo "tests-failed=true" >> $GITHUB_OUTPUT
+              echo "current-iteration=$iteration" >> $GITHUB_OUTPUT
+              
+              # Check if we should continue to next iteration
+              if [ $iteration -lt $max_iterations ]; then
+                echo "🔄 Tests failed, triggering next iteration..."
+                
+                # Check if we have implementation files
+                if [ -d "api/" ] || [ -d "core/" ] || [ -d "cli/" ] || [ -f "main.py" ]; then
+                  echo "📝 Implementation exists, running Claude to fix failing tests..."
+                  
+                  # Trigger next Claude iteration
+                  python .github/scripts/claude_code_generator.py \
+                    --pr-number="${{ steps.pr-info.outputs.pr-number }}" \
+                    --requirements-file="pr_requirements.json" \
+                    --iteration="$iteration" \
+                    --test-failures="$(python -m pytest --tb=no -q 2>&1 | head -10)"
+                  
+                  # Check if Claude made changes
+                  if git diff --quiet; then
+                    echo "⚠️ No changes made by Claude, stopping iterations"
+                    break
+                  fi
+                  
+                  echo "📝 Changes detected, continuing to next iteration..."
+                else
+                  echo "⚠️ No implementation files found, stopping iterations"
+                  break
+                fi
+              else
+                echo "⚠️ Maximum iterations reached ($max_iterations)"
+                break
+              fi
+            fi
+          else
+            echo "📝 No tests found, stopping iterations"
+            break
+          fi
+          
+          iteration=$((iteration + 1))
+        done
+        
+        echo "🏁 TDD Iteration Process Complete"
+        echo "Final iteration: $iteration"
+        echo "Tests passed: ${{ steps.run-tests.outputs.tests-passed }}"
     
     - name: Commit Generated Code
       run: |
