@@ -718,6 +718,111 @@ Please continue with the next section or complete the current one."""
         
         return summary if summary else "No implementation details found"
     
+    def run_tdd_iterations(self, initial_response: str, requirements: Dict[str, Any], created_files: List[str]) -> str:
+        """Run TDD iterations: tests → fail → fix → tests → pass."""
+        print("🔄 Starting TDD Iteration Process...")
+        
+        max_iterations = 5
+        current_response = initial_response
+        
+        for iteration in range(1, max_iterations + 1):
+            print(f"\n🔄 TDD Iteration {iteration}/{max_iterations}")
+            
+            # Check if we have tests to run
+            if not any(f.endswith('.py') and 'test' in f.lower() for f in created_files):
+                print("📝 No test files found, skipping TDD iterations")
+                break
+            
+            # Run tests
+            print("📋 Running tests...")
+            try:
+                import subprocess
+                result = subprocess.run(['python', '-m', 'pytest', '-v', '--tb=short'], 
+                                      capture_output=True, text=True, timeout=300)
+                
+                if result.returncode == 0:
+                    print("✅ All tests passed!")
+                    print("🎉 TDD Process Complete - Implementation successful!")
+                    return current_response
+                else:
+                    print(f"❌ Tests failed on iteration {iteration}")
+                    print("Test output:")
+                    print(result.stdout[-1000:])  # Last 1000 chars of output
+                    
+                    if iteration < max_iterations:
+                        print("🔄 Tests failed, triggering next iteration...")
+                        
+                        # Create continuation prompt with test failures
+                        test_failures = result.stdout[-1000:] + "\n" + result.stderr[-500:]
+                        continuation_prompt = self._create_tdd_continuation_prompt(current_response, requirements, test_failures, iteration)
+                        
+                        # Get Claude to fix the failing tests
+                        fixed_response = self._make_claude_request_with_retry(continuation_prompt)
+                        
+                        if fixed_response:
+                            # Combine responses
+                            current_response = current_response + "\n\n" + fixed_response
+                            
+                            # Re-parse and write files
+                            new_files = self.parse_and_write_files(fixed_response)
+                            created_files.extend(new_files)
+                            
+                            print(f"📝 Claude made fixes, continuing to iteration {iteration + 1}")
+                        else:
+                            print("❌ Claude failed to provide fixes, stopping TDD iterations")
+                            break
+                    else:
+                        print("⚠️ Maximum iterations reached, stopping TDD iterations")
+                        break
+                        
+            except subprocess.TimeoutExpired:
+                print("⏰ Test execution timed out, stopping TDD iterations")
+                break
+            except Exception as e:
+                print(f"❌ Error running tests: {e}")
+                break
+        
+        print("🏁 TDD Iteration Process Complete")
+        return current_response
+    
+    def _create_tdd_continuation_prompt(self, current_response: str, requirements: Dict[str, Any], test_failures: str, iteration: int) -> str:
+        """Create a prompt for Claude to fix failing tests in TDD iterations."""
+        return f"""You are continuing TDD iteration {iteration}. The tests are failing and need to be fixed.
+
+## ORIGINAL REQUIREMENTS
+{requirements.get('pr_title', 'Unknown PR')}
+
+## CURRENT IMPLEMENTATION
+{current_response[-2000:]}...
+
+## TEST FAILURES (Fix These)
+{test_failures}
+
+## INSTRUCTIONS
+1. **ANALYZE** the test failures carefully
+2. **IDENTIFY** what's wrong with the current implementation
+3. **FIX** the implementation to make tests pass
+4. **ONLY** provide the fixed/updated code sections
+5. **DO NOT** repeat the entire response
+6. **FOCUS** on making the failing tests pass
+
+## OUTPUT FORMAT
+Provide ONLY the corrected implementation sections:
+
+### IMPLEMENTATION_FILES (Updated)
+```python
+# File: path/to/fixed_file.py
+[fixed implementation code]
+```
+
+### ADDITIONAL_FILES (If needed)
+```python
+# File: path/to/new_file.py
+[new implementation code]
+```
+
+Make the tests pass with minimal, targeted changes."""
+    
     def _create_refinement_prompt(self, incomplete_response: str, requirements: Dict[str, Any]) -> str:
         """Create a prompt to refine incomplete responses."""
         # Safely extract requirements with fallbacks
@@ -856,6 +961,18 @@ def main():
     print(f"Created/modified {len(created_files)} files:")
     for file_path in created_files:
         print(f"  - {file_path}")
+    
+    # TDD: Run tests and iterate if needed
+    if args.iteration == 1:  # Only do TDD iterations on first run
+        print("\n🧪 Starting TDD Iteration Process...")
+        final_response = generator.run_tdd_iterations(claude_response, requirements, created_files)
+        if final_response:
+            claude_response = final_response
+            # Re-parse files after TDD iterations
+            created_files = generator.parse_and_write_files(claude_response)
+            print(f"\n🔄 TDD Complete! Final files:")
+            for file_path in created_files:
+                print(f"  - {file_path}")
     
     # STRICT VALIDATION: Check implementation completeness
     print("\n🔍 Validating implementation completeness...")
