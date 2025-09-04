@@ -88,7 +88,9 @@ class ClaudeCodeGenerator:
                 try:
                     # Read first 2000 chars of each doc for better context (increased from 1500)
                     content = doc_path.read_text()[:2000]
-                    content_sections.append(f"### {doc_file}\n```\n{content}{"..." if len(doc_path.read_text()) > 2000 else ""}\n```")
+                    # Handle the conditional content separately to avoid quote conflicts
+                    ellipsis = "..." if len(doc_path.read_text()) > 2000 else ""
+                    content_sections.append(f"### {doc_file}\n```\n{content}{ellipsis}\n```")
                 except Exception as e:
                     content_sections.append(f"### {doc_file}\n*Could not read file: {e}*")
         
