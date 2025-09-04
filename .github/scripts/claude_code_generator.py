@@ -330,7 +330,15 @@ Think through this systematically and deliver a complete, working solution that 
                 self._save_progress(full_response, requirements, attempt=2)
                 return full_response  # Return what we have so far
             
-            print(f"✅ Successfully completed response in chunks")
+            # Additional validation: Check if implementation is actually complete
+            validation_result = self._validate_implementation_completeness(full_response, requirements)
+            if not validation_result['complete']:
+                print(f"⚠️ Response format complete but implementation incomplete ({validation_result['overall_score']:.1f}%)")
+                print("💾 Saving progress for manual resume...")
+                self._save_progress(full_response, requirements, attempt=2)
+                return full_response  # Return what we have so far
+            
+            print(f"✅ Successfully completed response in chunks with full implementation")
             return full_response
         
         return initial_response
@@ -557,6 +565,141 @@ Please continue with the next section or complete the current one."""
                 return False
         return True
     
+    def _validate_implementation_completeness(self, response: str, requirements: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate that all requirements have been implemented."""
+        validation_result = {
+            'complete': False,
+            'missing_items': [],
+            'completed_items': [],
+            'overall_score': 0
+        }
+        
+        # Extract requirements list
+        req_list = requirements.get('requirements', [])
+        if not req_list:
+            validation_result['missing_items'].append('No requirements found to validate')
+            return validation_result
+        
+        total_requirements = len(req_list)
+        completed_count = 0
+        
+        for req in req_list:
+            req_text = req.get('requirement', '').lower()
+            req_id = req.get('id', 'Unknown')
+            
+            # Check if this requirement is addressed in the response
+            if self._requirement_implemented(req_text, response):
+                validation_result['completed_items'].append(f"✅ {req_id}: {req_text}")
+                completed_count += 1
+            else:
+                validation_result['missing_items'].append(f"❌ {req_id}: {req_text}")
+        
+        # Calculate completion score
+        validation_result['overall_score'] = (completed_count / total_requirements) * 100
+        validation_result['complete'] = validation_result['overall_score'] >= 90  # 90% threshold
+        
+        return validation_result
+    
+    def _requirement_implemented(self, requirement: str, response: str) -> bool:
+        """Check if a specific requirement is implemented in the response."""
+        # Convert to lowercase for comparison
+        req_lower = requirement.lower()
+        resp_lower = response.lower()
+        
+        # Check for key indicators of implementation
+        implementation_indicators = [
+            'class', 'def ', 'import ', 'from ', 'async def', 'async with',
+            'def test_', 'class Test', 'pytest', 'unittest',
+            'def main', 'if __name__', 'return ', 'raise ',
+            'try:', 'except:', 'finally:', 'with open'
+        ]
+        
+        # Check if requirement keywords are present
+        req_keywords = [word for word in req_lower.split() if len(word) > 3]
+        keywords_found = sum(1 for keyword in req_keywords if keyword in resp_lower)
+        
+        # Check if implementation code is present
+        has_implementation = any(indicator in resp_lower for indicator in implementation_indicators)
+        
+        # Requirement is implemented if:
+        # 1. Most keywords are found AND
+        # 2. Implementation code is present
+        keyword_threshold = max(1, len(req_keywords) * 0.6)  # 60% of keywords
+        
+        return keywords_found >= keyword_threshold and has_implementation
+    
+    def _create_development_log(self, response: str, requirements: Dict[str, Any], validation_result: Dict[str, Any]) -> str:
+        """Create a development log tracking all changes and completion status."""
+        timestamp = time.strftime('%Y-%m-%d %H:%M:%S UTC')
+        
+        log_content = f"""# Development Log - {requirements.get('pr_title', 'Unknown PR')}
+
+## 📅 Generated: {timestamp}
+## 🎯 PR: {requirements.get('pr_title', 'Unknown PR')}
+## 📋 Requirements: {len(requirements.get('requirements', []))} total
+
+## ✅ Completion Status
+**Overall Score: {validation_result['overall_score']:.1f}%**
+**Status: {'🟢 COMPLETE' if validation_result['complete'] else '🟡 INCOMPLETE'}**
+
+### ✅ Completed Requirements ({len(validation_result['completed_items'])})
+{chr(10).join(validation_result['completed_items'])}
+
+### ❌ Missing Requirements ({len(validation_result['missing_items'])})
+{chr(10).join(validation_result['missing_items'])}
+
+## 📁 Generated Files
+{self._extract_generated_files(response)}
+
+## 🔍 Implementation Details
+{self._extract_implementation_summary(response)}
+
+## 📝 Notes
+- Generated by Enhanced Claude AI Agent
+- Validation threshold: 90% completion required
+- This log must show 90%+ completion for commit approval
+
+---
+*Last updated: {timestamp}*
+"""
+        return log_content
+    
+    def _extract_generated_files(self, response: str) -> str:
+        """Extract list of generated files from Claude's response."""
+        files_section = ""
+        
+        # Look for TEST_FILES section
+        if 'TEST_FILES' in response:
+            test_start = response.find('TEST_FILES')
+            test_end = response.find('###', test_start + 1) if '###' in response[test_start:] else len(response)
+            test_section = response[test_start:test_end]
+            files_section += f"### Test Files\n{test_section}\n\n"
+        
+        # Look for IMPLEMENTATION_FILES section
+        if 'IMPLEMENTATION_FILES' in response:
+            impl_start = response.find('IMPLEMENTATION_FILES')
+            impl_end = response.find('###', impl_start + 1) if '###' in response[impl_start:] else len(response)
+            impl_section = response[impl_start:impl_end]
+            files_section += f"### Implementation Files\n{impl_section}\n\n"
+        
+        return files_section if files_section else "No file sections found in response"
+    
+    def _extract_implementation_summary(self, response: str) -> str:
+        """Extract implementation summary from Claude's response."""
+        summary = ""
+        
+        # Look for key sections
+        sections = ['REQUIREMENT_ANALYSIS', 'SOLUTION_ARCHITECTURE', 'IMPLEMENTATION_STEPS']
+        
+        for section in sections:
+            if section in response:
+                section_start = response.find(section)
+                section_end = response.find('###', section_start + 1) if '###' in response[section_start:] else len(response)
+                section_content = response[section_start:section_end]
+                summary += f"### {section}\n{section_content[:500]}...\n\n"
+        
+        return summary if summary else "No implementation details found"
+    
     def _create_refinement_prompt(self, incomplete_response: str, requirements: Dict[str, Any]) -> str:
         """Create a prompt to refine incomplete responses."""
         # Safely extract requirements with fallbacks
@@ -691,6 +834,37 @@ def main():
     for file_path in created_files:
         print(f"  - {file_path}")
     
+    # STRICT VALIDATION: Check implementation completeness
+    print("\n🔍 Validating implementation completeness...")
+    validation_result = generator._validate_implementation_completeness(claude_response, requirements)
+    
+    print(f"📊 Completion Score: {validation_result['overall_score']:.1f}%")
+    print(f"✅ Completed: {len(validation_result['completed_items'])} requirements")
+    print(f"❌ Missing: {len(validation_result['missing_items'])} requirements")
+    
+    # Create development log
+    development_log = generator._create_development_log(claude_response, requirements, validation_result)
+    with open('DEVELOPMENT_LOG.md', 'w') as f:
+        f.write(development_log)
+    
+    print(f"📝 Development log saved to DEVELOPMENT_LOG.md")
+    
+    # STRICT COMPLETION CHECK: Must be 90%+ complete
+    if not validation_result['complete']:
+        print("❌ ERROR: Implementation is INCOMPLETE!")
+        print(f"   - Required: 90% completion")
+        print(f"   - Actual: {validation_result['overall_score']:.1f}% completion")
+        print("   - Missing requirements:")
+        for missing in validation_result['missing_items'][:5]:  # Show first 5
+            print(f"     {missing}")
+        if len(validation_result['missing_items']) > 5:
+            print(f"     ... and {len(validation_result['missing_items']) - 5} more")
+        
+        print("\n💾 Progress saved to DEVELOPMENT_LOG.md")
+        print("🔄 To resume and complete missing requirements, run with --resume flag")
+        print("The workflow should fail to prevent incomplete commits.")
+        return 1
+    
     # Validate that actual implementation files were created
     if len(created_files) == 0:
         print("❌ ERROR: No implementation files were created!")
@@ -706,6 +880,7 @@ def main():
         return 1
     
     print(f"✅ Successfully created {len(created_files)} files including {len(python_files)} Python files")
+    print(f"🎉 IMPLEMENTATION COMPLETE: {validation_result['overall_score']:.1f}% requirements satisfied!")
     
     # Save Claude's full response for debugging
     with open('claude_response.md', 'w') as f:
