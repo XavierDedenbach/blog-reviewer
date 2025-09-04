@@ -284,7 +284,7 @@ Think through this systematically and deliver a complete, working solution that 
             # Continue from where we left off
             print("🔄 Continuing from saved progress...")
             continuation_prompt = self._create_continuation_prompt(progress['response'], requirements)
-            continued_response = self._make_claude_request_with_retry(continuation_prompt, save_progress=True)
+            continued_response = self._make_claude_request_with_retry(continuation_prompt)
             
             if continued_response is None:
                 print("❌ Continuation failed, progress saved for manual resume")
@@ -297,7 +297,7 @@ Think through this systematically and deliver a complete, working solution that 
         
         # Use retry logic for initial API calls
         print("📡 Making initial API request to Claude with retry logic...")
-        initial_response = self._make_claude_request_with_retry(prompt, save_progress=True)
+        initial_response = self._make_claude_request_with_retry(prompt)
         
         # Check if API call failed
         if initial_response is None:
@@ -314,7 +314,7 @@ Think through this systematically and deliver a complete, working solution that 
             
             # Continue with continuation prompt
             continuation_prompt = self._create_continuation_prompt(initial_response, requirements)
-            continued_response = self._make_claude_request_with_retry(continuation_prompt, save_progress=True)
+            continued_response = self._make_claude_request_with_retry(continuation_prompt)
             
             if continued_response is None:
                 print("❌ Continuation failed, progress saved for manual resume")
@@ -517,7 +517,7 @@ Please continue with the next section or complete the current one."""
         
         # Continue with continuation prompt
         continuation_prompt = self._create_continuation_prompt(progress['response'], requirements)
-        continued_response = self._make_claude_request_with_retry(continuation_prompt, save_progress=True)
+        continued_response = self._make_claude_request_with_retry(continuation_prompt)
         
         if continued_response is None:
             print("❌ Continuation failed, progress updated for next attempt")
