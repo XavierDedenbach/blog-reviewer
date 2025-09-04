@@ -179,6 +179,9 @@ Requirements to implement:
 Test Required: {requirements['test_required']}
 Documentation Required: {requirements['documentation_required']}
 
+## Previous Work Context
+{self._format_previous_work_context()}
+
 ## TDD Iteration Context
 Current Iteration: {iteration}
 {f"Previous Test Failures:" if test_failures else "First iteration - writing initial tests and implementation"}
@@ -300,11 +303,13 @@ Think through this systematically and deliver a complete, working solution that 
         # Always start fresh with full context for better results
         print("🔄 Starting fresh with full project context...")
         
-        # Clean up any old progress files to ensure fresh start
-        import os
-        if os.path.exists('claude_progress.json'):
-            os.remove('claude_progress.json')
-            print("🧹 Cleaned up old progress file")
+        # Load previous work from DEVELOPMENT_LOG.md if it exists
+        previous_work = self._load_previous_work()
+        if previous_work:
+            print(f"📚 Found previous work: {len(previous_work['completed_items'])} items completed")
+            print(f"📋 Remaining work: {len(previous_work['missing_items'])} items to complete")
+        else:
+            print("🆕 No previous work found, starting from scratch")
         
         # Use retry logic for initial API calls
         print("📡 Making initial API request to Claude with retry logic...")
@@ -722,6 +727,104 @@ Please continue with the next section or complete the current one."""
         
         return summary if summary else "No implementation details found"
     
+    def _load_previous_work(self) -> Optional[Dict[str, Any]]:
+        """Load previous work from DEVELOPMENT_LOG.md if it exists."""
+        import os
+        
+        if not os.path.exists('DEVELOPMENT_LOG.md'):
+            return None
+        
+        try:
+            with open('DEVELOPMENT_LOG.md', 'r') as f:
+                content = f.read()
+            
+            # Parse the development log to extract completion status
+            previous_work = {
+                'completed_items': [],
+                'missing_items': [],
+                'overall_score': 0,
+                'generated_files': '',
+                'implementation_details': ''
+            }
+            
+            # Extract completed items
+            if '### ✅ Completed Requirements' in content:
+                completed_start = content.find('### ✅ Completed Requirements')
+                completed_end = content.find('### ❌ Missing Requirements')
+                if completed_end == -1:
+                    completed_end = content.find('## 📁 Generated Files')
+                
+                if completed_end != -1:
+                    completed_section = content[completed_start:completed_end]
+                    # Extract individual completed items
+                    lines = completed_section.split('\n')
+                    for line in lines:
+                        if line.strip().startswith('✅'):
+                            previous_work['completed_items'].append(line.strip())
+            
+            # Extract missing items
+            if '### ❌ Missing Requirements' in content:
+                missing_start = content.find('### ❌ Missing Requirements')
+                missing_end = content.find('## 📁 Generated Files')
+                
+                if missing_end != -1:
+                    missing_section = content[missing_start:missing_end]
+                    # Extract individual missing items
+                    lines = missing_section.split('\n')
+                    for line in lines:
+                        if line.strip().startswith('❌'):
+                            previous_work['missing_items'].append(line.strip())
+            
+            # Extract generated files
+            if '## 📁 Generated Files' in content:
+                files_start = content.find('## 📁 Generated Files')
+                files_end = content.find('## 🔍 Implementation Details')
+                if files_end == -1:
+                    files_end = content.find('## 📝 Notes')
+                
+                if files_end != -1:
+                    previous_work['generated_files'] = content[files_start:files_end].strip()
+            
+            # Extract implementation details
+            if '## 🔍 Implementation Details' in content:
+                impl_start = content.find('## 🔍 Implementation Details')
+                impl_end = content.find('## 📝 Notes')
+                
+                if impl_end != -1:
+                    previous_work['implementation_details'] = content[impl_start:impl_end].strip()
+            
+            return previous_work
+            
+        except Exception as e:
+            print(f"⚠️ Warning: Could not parse DEVELOPMENT_LOG.md: {e}")
+            return None
+    
+    def _format_previous_work_context(self) -> str:
+        """Format previous work context for inclusion in the prompt."""
+        previous_work = self._load_previous_work()
+        
+        if not previous_work:
+            return "No previous work found - starting fresh implementation."
+        
+        context = f"""Previous development session found with the following progress:
+
+### ✅ Previously Completed ({len(previous_work['completed_items'])} items)
+{chr(10).join(previous_work['completed_items'][:10])}  # Show first 10 items
+
+### ❌ Still Need to Implement ({len(previous_work['missing_items'])} items)
+{chr(10).join(previous_work['missing_items'][:10])}  # Show first 10 items
+
+### 📁 Previously Generated Files
+{previous_work['generated_files'][:1000]}...
+
+### 🔍 Previous Implementation Details
+{previous_work['implementation_details'][:1000]}...
+
+**IMPORTANT**: Build upon this existing work. Do not recreate what's already done.
+Focus on implementing the missing requirements and improving existing code if needed."""
+        
+        return context
+    
     def run_tdd_iterations(self, initial_response: str, requirements: Dict[str, Any], created_files: List[str]) -> str:
         """Run TDD iterations: tests → fail → fix → tests → pass."""
         print("🔄 Starting TDD Iteration Process...")
@@ -804,6 +907,9 @@ You need to create the IMPLEMENTATION files, not just fix tests.
 ## ORIGINAL REQUIREMENTS
 {requirements.get('pr_title', 'Unknown PR')}
 {requirements.get('requirements', [])}
+
+## PREVIOUS WORK CONTEXT
+{self._format_previous_work_context()}
 
 ## TEST FAILURES (Fix These)
 {test_failures}
